@@ -1,12 +1,25 @@
 {
   "name": "huiyu-cdnc-appscript",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Apps Script web app (CDNC form) – managed via VS Code, git, clasp",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "login": "clasp login",
+    "login:nolh": "clasp login --no-localhost",
+    "status": "clasp login --status",
+    "open": "clasp open",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "ver": "clasp version \"update\"",
+    "deploy": "clasp deploy --description \"deploy\"",
+    "release": "npm run push && npm run ver && npm run deploy",
+    "repo:init": "git init && git add . && git commit -m 'init backup'",
+    "repo:push": "git push -u origin main"
   },
-  "keywords": [],
+  "keywords": ["google-apps-script","clasp","webapp"],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
 }
