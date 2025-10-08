@@ -241,3 +241,7 @@ function readLoanProgress(total) {
     percent: Math.round(pct * 10) / 10  // 1 位小數
   };
 }
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
