@@ -1,0 +1,6 @@
+# 忽略這些在 push 時不上傳
+**/.git/**
+**/.gitignore
+**/node_modules/**
+**/.clasp.json.backup
+README.md

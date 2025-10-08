@@ -1,0 +1,9 @@
+{
+  "timeZone": "Asia/Taipei",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "webapp": {
+    "access": "ANYONE",              // ANYONE | ANYONE_ANONYMOUS | DOMAIN | SIGNED_IN
+    "executeAs": "USER_ACCESSING"    // USER_ACCESSING | USER_DEPLOYING
+  }
+}
