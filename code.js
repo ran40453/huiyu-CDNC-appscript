@@ -1,3 +1,4 @@
+
 /** ================== 基本設定 ================== */
 const SHEET_CFG = {
   spreadsheetId: '1qgECWIRQvcYCIpzhpHc2RJDfgfj-PT0Ba8oxQYkEreg', // 你的 Google Sheet ID
@@ -7,8 +8,11 @@ const SHEET_CFG = {
 };
 
 /** ================== 路由 ================== */
-function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('form')
+function doGet() {
+  const t = HtmlService.createTemplateFromFile('form');
+  // 讓 <?= DEPLOY_TAG ?> 有值（沒給會報 ReferenceError）
+  t.DEPLOY_TAG = (new Date()).toISOString().slice(0,10);
+  return t.evaluate()
     .setTitle('碧柳記帳冊 v10')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -242,6 +246,7 @@ function readLoanProgress(total) {
   };
 }
 
+// 讓 <?!= include('xxx'); ?> 可用
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }

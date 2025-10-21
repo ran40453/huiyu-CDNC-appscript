@@ -1,0 +1,16 @@
+{
+  "scriptId": "1PY2_ecSch4b8PrkDVLaJurOnpEshh1WMfYjSgz1Al-cMzD2AAzd3NpF9",
+  "rootDir": ".",
+  "scriptExtensions": [".js", ".gs"],
+  "htmlExtensions": [".html"],
+  "jsonExtensions": [".json"],
+  "filePushOrder": [
+    "appsscript.json",
+    "code.js",
+    "form.html",
+    "form_link.html",
+    "form_js.html",
+    "css.html"
+  ],
+  "skipSubdirectories": true
+}

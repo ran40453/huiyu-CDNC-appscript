@@ -2,14 +2,11 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Push to GAS",
+      "label": "Clasp Push",
       "type": "shell",
       "command": "npm run push",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": { "reveal": "always" }
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
     }
   ]
 }

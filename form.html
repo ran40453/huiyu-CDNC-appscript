@@ -4,7 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>碧柳記帳冊 v10</title>
-  <style><?!= include('css'); ?></style>
+    <script>
+      // 由最上層模板計算後塞到前端（注意：這段要在其它檔案 include 之前）
+      window.__CW_DEPLOY_TAG = "<?= DEPLOY_TAG ?>";
+      // 若你要暫時手動標註測試環境，也可以覆蓋：
+      // window.__CW_DEPLOY_TAG = "TEST / staging-2025-09-03";
+    </script>
+ <?!= include('css'); ?>
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f0f12"  media="(prefers-color-scheme: dark)">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -286,9 +292,7 @@
       </div>
     </nav>
   </div>
-</div>
-<script><?!= include('form_js'); ?></script>
-<script><?!= include('links_js'); ?></script>
+
 <script>
 (function(){
   function highlightTab(name){
@@ -322,5 +326,6 @@
   });
 })();
 </script>
+<?!= include('form_js'); ?>
 </body>
 </html>

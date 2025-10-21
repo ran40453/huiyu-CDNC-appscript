@@ -1,3 +1,4 @@
+<script>
 (function(){
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
@@ -269,7 +270,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
     chipsPayer.innerHTML = '';
     selectedPayers = new Set(payers);
-    payers.forEach(p=> chipsPayer.appendChild(makeChip(p, true));
+    payers.forEach(p=> chipsPayer.appendChild(makeChip(p, true)));
 
     // 收入/支出（可複選）
     segType.querySelectorAll('.segbtn').forEach(btn=>{
@@ -488,7 +489,8 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
     $('#page-info').hidden     = (name !== 'info');
     $('#page-home').hidden     = (name !== 'home');
     $('#page-insights').hidden = (name !== 'insights');
-    $('#page-links').hidden = (name !== 'links');
+    const pageLinks = document.getElementById('page-links');
+    if (pageLinks) pageLinks.hidden = (name !== 'links');
     $$('.sb-link').forEach(b=> b.classList.toggle('active', b.dataset.nav === name));
     pageNameEl.textContent = pageNames[name] || '';
     if (name === 'insights') { setDrawer(false); loadRows(); }
@@ -496,7 +498,8 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   }
   function applyHash(){
     const h = (location.hash || '#info').replace('#','');
-    showPage(['info','home','insights'].includes(h) ? h : 'info');
+    const ok = ['info','home','insights','links'];
+    showPage(ok.includes(h) ? h : 'info');
   }
   window.addEventListener('hashchange', applyHash);
   applyHash();
@@ -562,3 +565,4 @@ function renderSumBar(){
 }
   
 })();
+</script>
