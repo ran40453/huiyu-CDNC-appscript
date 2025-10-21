@@ -1,0 +1,74 @@
+<!-- form_link.html -->
+<section id="page-links" class="wrap" hidden>
+  <div class="cards-zoom-scope" style="display:grid; grid-template-columns: 360px 1fr; gap:12px;">
+    <!-- 左側清單 -->
+    <section class="card card-list">
+      <div class="card-hd">我的連結</div>
+      <div id="listScroll" class="list-scroll">
+        <div id="listPadTop"></div>
+        <div id="listHost"></div>
+        <div id="listPadBot"></div>
+        <div id="btnAddLink" class="link-item link-add">＋ 新增連結</div>
+      </div>
+    </section>
+
+    <!-- 右側預覽 -->
+    <section class="card card-preview">
+      <div class="card-hd">預覽</div>
+      <div class="card-bd">
+        <div class="actions-inline" style="display:flex; gap:8px; margin-bottom:10px;">
+          <button id="btnGo" class="btn btn-primary" disabled>前往此站</button>
+          <button id="btnRemove" class="btn btn-danger" disabled>移除此頁</button>
+        </div>
+
+        <div class="preview-wrap" style="display:grid; gap:8px;">
+          <div class="preview-meta">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <img id="pvFavicon" class="link-ico" alt="icon" />
+            </div>
+            <h3 id="pvTitle" class="preview-title" style="margin:6px 0;">—</h3>
+            <div id="pvDomain" class="link-domain">—</div>
+            <div id="pvUrl" class="preview-url" style="word-break:break-all;">—</div>
+
+            <!-- 備註 -->
+            <div class="note-wrap" style="margin-top:12px;">
+              <div id="pvNote" class="note-box" contenteditable="true" data-placeholder="輸入備註…"
+                   style="min-height:72px; border:1px solid var(--field-border); border-radius: var(--radius-card); padding:8px;"></div>
+              <div class="note-tools" style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                <button id="btnSaveNote" class="btn btn-ghost" disabled>儲存備註</button>
+                <span id="noteStatus" class="note-status" aria-live="polite"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- 新增連結 Modal -->
+  <div id="modalMask" class="modal-mask" role="dialog" aria-modal="true" style="display:none;
+       position:fixed; inset:0; align-items:center; justify-content:center;
+       background:rgba(0,0,0,.28); z-index:40;">
+    <div class="modal card" style="width:min(560px, 92%);">
+      <div class="card-hd" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>新增連結</div>
+        <button id="modalClose" class="btn">✕</button>
+      </div>
+      <div class="card-bd">
+        <div class="form-row" style="display:grid; gap:6px; margin:8px 0;">
+          <label for="inpUrl">網址（貼上即可）</label>
+          <input id="inpUrl" type="url" placeholder="https://example.com/..." />
+        </div>
+        <div class="form-row" style="display:grid; gap:6px; margin:8px 0;">
+          <label for="inpTitle">網站標題（自動擷取，可修改）</label>
+          <input id="inpTitle" type="text" placeholder="網站標題" />
+        </div>
+      </div>
+      <div class="card-ft">
+        <button id="btnCancel" class="btn">取消</button>
+        <button id="btnConfirm" class="btn btn-primary" disabled>確定新增</button>
+      </div>
+    </div>
+  </div>
+</section>

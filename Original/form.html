@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>碧柳記帳冊 v10</title>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0f12"  media="(prefers-color-scheme: dark)">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== iOS 亮色（含玻璃） ===== */
+    :root{
+      --bg: #ffffff;
+      --fg: #0b0b0f;
+      --muted: #6b7280;
+      --line: rgba(60,60,67,0.18);
+      --tint: #0a84ff;
+      --tint-pressed: #0066cc;
+
+      --card: rgba(255,255,255,0.68);
+      --card-blur: blur(18px) saturate(160%);
+      --shadow: 0 18px 40px rgba(0,0,0,.06), 0 1px 0 rgba(0,0,0,.04) inset;
+
+      --field-bg: rgba(255,255,255,0.98);
+      --field-border: rgba(60,60,67,0.18);
+      --tag-bg: rgba(255,255,255,0.98);
+
+      --ink-income-bg: rgba(10,132,255,.10);
+      --ink-income-border: rgba(10,132,255,.28);
+      --ink-expense-bg: rgba(255,59,48,.08);
+      --ink-expense-border: rgba(255,59,48,.24);
+      --ink-balance-bg: rgba(52,199,89,.10);
+      --ink-balance-border: rgba(52,199,89,.28);
+
+      /* 左側 sort 抽屜寬度 */
+      --flt-w: 140px;
+    }
+    @media (max-width: 900px){ :root{ --flt-w: 130px; } }
+
+    /* ===== 暗色 ===== */
+    html[data-theme="dark"]{
+      color-scheme: dark;
+      --bg: #0f0f12; --fg: #f5f5f7; --muted: #a1a1aa; --line: rgba(255,255,255,0.14);
+      --card: rgba(26,26,28,0.68); --card-blur: blur(18px) saturate(140%); --shadow: 0 20px 44px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.04) inset;
+      --field-bg: rgba(36,36,38,0.9); --field-border: rgba(255,255,255,0.08); --tag-bg: rgba(40,40,42,0.9);
+      --ink-income-bg: rgba(10,132,255,.22); --ink-income-border: rgba(10,132,255,.55);
+      --ink-expense-bg: rgba(255,69,58,.22); --ink-expense-border: rgba(255,69,58,.55);
+      --ink-balance-bg: rgba(48,209,88,.22); --ink-balance-border: rgba(48,209,88,.55);
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Noto Sans", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      color: var(--fg);
+      background:
+        radial-gradient(1200px 800px at 0% -10%, rgba(10,132,255,.06), transparent 60%),
+        radial-gradient(1000px 700px at 100% 110%, rgba(52,199,89,.06), transparent 60%),
+        linear-gradient(to bottom, var(--bg), var(--bg));
+    }
+
+    .app { display:flex; min-height: 100dvh; }
+
+    /* ===== 右側抽屜（主選單） ===== */
+    .sidebar{
+      position: fixed; top:0; right:0; bottom:0; width: 280px;
+      background: var(--card);
+      -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
+      border-left: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transform: translateX(100%); transition: transform .25s ease;
+      z-index: 30; padding: 18px 14px;
+    }
+    .sidebar.open{ transform: translateX(0); }
+    .sb-head{ display:flex; align-items:center; justify-content:space-between; margin: 2px 6px 12px; }
+    .sb-title{ font-weight:800; letter-spacing:-.01em; font-size: 26px; }
+    .sb-close{
+      border:1px solid var(--line); background: var(--field-bg); color: var(--fg);
+      border-radius: 999px; padding: 6px 10px; font-size: 13px; cursor:pointer;
+    }
+    .sb-group{ margin: 8px 0; }
+    .sb-link{
+      display:flex; align-items:center; gap:10px;
+      padding: 12px 14px; margin: 6px 0; border-radius: 14px;
+      text-decoration:none; color: var(--fg); border:1px solid transparent;
+      background: var(--field-bg); cursor:pointer; font-size: 16px; font-weight:700;
+    }
+    .sb-link:hover{ filter: brightness(0.98); }
+    .sb-link.active{ outline: 2px solid var(--tint); }
+    .sb-foot{ margin-top: 16px; font-size: 12px; color: var(--muted); }
+
+    .content{ flex:1; min-width:0; width:100%; }
+
+    .topbar{
+      display:grid; grid-template-columns: 1fr auto; grid-template-areas:
+        "left right"
+        "center center";
+      gap:6px;
+      padding: 14px 16px; position: sticky; top:0; z-index: 10;
+      background: color-mix(in oklab, var(--bg) 90%, white);
+      border-bottom: 1px solid var(--line);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    }
+    .topbar-row{ display:flex; align-items:center; justify-content:space-between; grid-area: left / left / left / right; }
+    .large-title{ font-size: clamp(22px, 4vw, 30px); font-weight: 800; letter-spacing: -0.02em; margin: 0 6px; }
+    .subtitle{ color: var(--muted); font-weight: 600; font-size: 14px; }
+    .rightbar{ display:flex; gap:10px; align-items:center; }
+    .menu-btn{
+      border:1px solid var(--line); background: var(--field-bg); color: var(--fg);
+      border-radius: 12px; padding: 8px 12px; font-size: 14px; cursor:pointer;
+    }
+    .theme-toggle{ display:flex; gap:6px; align-items:center; }
+    .seg-sm{ display:flex; gap:6px; }
+    .seg-sm button{
+      border:1px solid var(--line); background: var(--field-bg); color: var(--fg);
+      border-radius: 12px; padding: 6px 10px; font-size: 13px; cursor:pointer;
+    }
+    .seg-sm button.active{ background: var(--tint); color: #fff; border-color: transparent; box-shadow: 0 4px 10px rgba(10,132,255,.25); }
+
+    .topbar-center{
+      grid-area: center;
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      font-weight: 800; letter-spacing:-.01em;
+    }
+    .page-name{ font-size: 16px; color: var(--muted); }
+    .wrap{ max-width: 980px; margin: 0 auto; padding: 16px; }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: clamp(14px, 3vw, 20px);
+      box-shadow: var(--shadow);
+      margin: 12px auto;
+      -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
+    }
+
+    .row { display:flex; gap: 12px; }
+    .col { flex:1; min-width: 0; display: flex; flex-direction: column; }
+    @media (max-width: 740px){ .row { flex-direction: column; } }
+
+    label{ font-size: 13px; color: var(--muted); margin: 2px 2px 6px; font-weight: 600; }
+    input[type="date"],
+    input[type="text"],
+    input[type="number"],
+    select{
+      appearance: none; background: var(--field-bg); color: var(--fg);
+      border: 1px solid var(--field-border); border-radius: 16px;
+      padding: 12px 14px; font-size: 16px; outline: none;
+      transition: box-shadow .2s ease, border-color .2s ease;
+      box-shadow: 0 1px 0 rgba(255,255,255,.35) inset, 0 1px 2px rgba(0,0,0,.06);
+    }
+    input:focus, select:focus{ border-color: rgba(10,132,255,.45); box-shadow: 0 0 0 4px rgba(10,132,255,.16); }
+
+    .seg{ display:flex; border:1px solid var(--field-border); border-radius: 14px; padding: 3px; background: var(--field-bg); }
+    .seg input{ display:none; }
+    .seg label{ flex:1; text-align:center; padding:10px 8px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .seg input:checked + label{ background: var(--tint); color: white; box-shadow: 0 6px 14px rgba(10,132,255,.25); }
+
+    .btn{
+      border: none; border-radius: 16px; padding: 12px 18px; font-size: 16px; font-weight: 700;
+      background: var(--tint); color: white; box-shadow: 0 8px 18px rgba(10,132,255,.25), 0 1px 0 rgba(255,255,255,.3) inset;
+      transition: transform .06s ease, background .2s ease, opacity .2s ease; cursor: pointer;
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); background: var(--tint-pressed); }
+    .btn:disabled{ opacity: .6; cursor: not-allowed; }
+    .actions{ display:flex; gap:10px; align-items:center; margin-top: 16px; }
+    #msg{ flex:1; min-height: 46px; display:flex; align-items:center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--tag-bg); font-size: 14px; }
+    @media (max-width: 560px){ .actions{ flex-direction: column; align-items: stretch; } .btn{ width: 100%; } }
+
+    /* KPI */
+    .ink{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 6px 0 4px; }
+    .ink-card{ border-radius: 16px; padding: 12px 14px; border: 1px solid var(--line); box-shadow: 0 6px 14px rgba(0,0,0,.04); }
+    .ink-income{ background: var(--ink-income-bg); border-color: var(--ink-income-border); }
+    .ink-expense{ background: var(--ink-expense-bg); border-color: var(--ink-expense-border); }
+    .ink-balance{ background: var(--ink-balance-bg); border-color: var(--ink-balance-border); }
+    .ink-label{ font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .ink-value{ font-weight: 800; font-size: clamp(18px, 3.6vw, 22px); letter-spacing: -.01em; }
+
+    /* 表格與圖表 */
+    .meta-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; color:var(--muted); }
+    table{ width:100%; border-collapse: collapse; font-size: 14px; }
+    th, td{ padding:12px 10px; border-bottom: 1px solid var(--line); text-align:left; }
+    th{ color: var(--muted); font-weight:700; cursor: pointer; user-select: none; }
+    .t-right{ text-align:right; white-space:nowrap; }
+
+    .grid-2-tight{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px){ .grid-2-tight{ grid-template-columns: 1fr; } }
+    .charts-compact{ height: 25vh; min-height: 200px; }
+    canvas{ width: 100%; height: 100%; }
+
+    /* 品牌色 */
+    :root{ --moss: #2f6d3a; --moss-ink: #24562d; }
+    html[data-theme="dark"]{ --moss: #86c28f; --moss-ink: #a8dbb0; }
+
+    /* 左側 sort 抽屜（分析頁） */
+    .flt-toggle{
+      position: fixed; top:50%; transform:translateY(-50%);
+      left: 6px; z-index: 35;
+      border: 1px solid var(--line);
+      background: var(--field-bg);
+      -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 12px; font-weight: 700; color: var(--fg);
+      box-shadow: var(--shadow); cursor: pointer;
+    }
+    .flt-toggle small{ opacity:.6; margin-left:4px; }
+
+    .flt-drawer{
+      position: fixed; left: 0; top: 64px; bottom: 0;
+      width: var(--flt-w);
+      transform: translateX(-100%); transition: transform .25s ease;
+      background: var(--card);
+      border-right: 1px solid var(--line);
+      -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
+      box-shadow: var(--shadow); z-index: 34; padding: 12px;
+    }
+    .flt-drawer.open{ transform: translateX(0); }
+    .flt-title{ font-weight:800; margin: 2px 0 10px; letter-spacing:-.01em; }
+    .flt-group{ margin: 10px 0 14px; }
+    .flt-label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .segmulti{ display:flex; gap:6px; flex-wrap:wrap; }
+    .segmulti .segbtn{
+      border:1px solid var(--field-border);
+      background: var(--field-bg); color: var(--fg);
+      border-radius: 12px; padding: 6px 10px; font-size: 12px; cursor:pointer;
+    }
+    .segmulti .segbtn.active{
+      background: var(--tint); color: #fff; border-color: transparent;
+      box-shadow: 0 4px 10px rgba(10,132,255,.25);
+    }
+    .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+    .chips.vertical .chip{
+      display:block; width:100%; text-align:left; margin-bottom:6px;
+      border:1px solid var(--field-border); background: var(--field-bg);
+      color: var(--fg); border-radius: 999px; padding: 6px 8px;
+      font-size: 12px; cursor:pointer;
+    }
+    .chip.active{
+      background: color-mix(in oklab, var(--tint) 92%, white);
+      color: #fff; border-color: transparent; box-shadow: 0 4px 10px rgba(10,132,255,.25);
+    }
+
+    /* sticky 圖表（可收合） */
+    .insights-sticky{ position: sticky; top: 64px; z-index: 5; margin: 10px auto 12px; padding: 10px 12px; }
+    .insights-sticky.collapsed .grid-2-tight{ display:none; }
+    .chart-placeholder{
+      display:none; align-items:center; justify-content:center;
+      height: 42px; border: 1px dashed var(--line); border-radius: 12px;
+      background: var(--tag-bg); color: var(--muted); font-weight:700; cursor:pointer;
+    }
+    .insights-sticky.collapsed .chart-placeholder{ display:flex; }
+    .chart-actions{ display:flex; justify-content:flex-end; margin-top:8px; }
+    .chart-toggle-btn{
+      border:1px solid var(--line); background: var(--field-bg); color: var(--fg);
+      border-radius: 12px; padding: 6px 10px; font-size: 13px; cursor:pointer;
+    }
+
+    /* 抽屜開啟時：右側內容右移 + 留 14px 間距 */
+    #page-insights.flt-shift{ margin-left: calc(var(--flt-w) + 14px); transition: margin-left .25s ease; }
+
+    /* 自適應比例的 logo 容器 */
+.logo-box{
+  /* 預設寬：原本 180px 的 2 倍 = 360px；同時做點響應式保護 */
+  --logo-w: 360px;
+  --logo-ar: 16/9;   /* 預設比例，真正比例由 JS 於載入後覆蓋 */
+  --logo-radius: 16px;
+  --logo-zoom: 1;    /* 如需只放大影像而不改容器，可設 >1（下面 JS 我們用放大尺寸，不用 zoom） */
+
+  width: min(var(--logo-w), 90%);
+  aspect-ratio: var(--logo-ar);
+  margin: 0 auto 16px;
+  border-radius: var(--logo-radius);
+  overflow: hidden;
+
+  /* 原來的玻璃與陰影保留 */
+  background: linear-gradient(180deg, rgba(10,132,255,.08), rgba(10,132,255,0));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 10px 24px rgba(0,0,0,.08);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* 圖片鋪滿容器但不裁切（保持完整） */
+#infoLogo{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;    /* 想要滿版可改 cover */
+  display: none;          /* 載到才顯示（JS 會打開） */
+  transform: scale(var(--logo-zoom));
+  transform-origin: center;
+  border-radius: var(--logo-radius); /* 讓圓角完全吻合 */
+}
+
+/* 資訊頁：以 logo 做為全幅模糊背景（Apple 霧面玻璃風） */
+#page-info{
+  position: relative;
+  isolation: isolate;           /* 確保內外層疊影不互相影響 */
+  border-radius: 22px;          /* 和 .wrap 內卡片圓角氛圍一致 */
+  overflow: hidden;             /* 防止模糊層外溢 */
+}
+
+/* 全屏背景：logo 圖模糊鋪滿 */
+body::before{
+  content: "";
+  position: fixed;   /* 固定整個視窗 */
+  inset: 0;
+  background-image: var(--hero-img, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(130%);
+  transform: scale(1.15);
+  will-change: transform, filter;
+  z-index: -2;       /* 永遠在最底層 */
+}
+
+/* 疊加亮化/暗化層，避免文字看不清楚 */
+body::after{
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(255,255,255,.28), transparent 55%),
+    radial-gradient(120% 80% at 50% 120%, rgba(255,255,255,.22), transparent 55%),
+    linear-gradient(to bottom, rgba(255,255,255,.28), rgba(255,255,255,.18));
+  z-index: -1;
+  opacity: var(--hero-overlay-alpha, .9);
+}
+
+/* 暗色模式：換成暗色遮罩 */
+html[data-theme="dark"] body::after{
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(0,0,0,.38), transparent 55%),
+    radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,.34), transparent 55%),
+    linear-gradient(to bottom, rgba(0,0,0,.38), rgba(0,0,0,.28));
+}
+
+/* 暗色模式：改用暗化疊色，降低亮度避免刺眼 */
+html[data-theme="dark"] #page-info::after{
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(0,0,0,.38), transparent 55%),
+    radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,.34), transparent 55%),
+    linear-gradient(to bottom, rgba(0,0,0,.38), rgba(0,0,0,.28));
+  opacity: var(--hero-overlay-alpha, .9);
+}
+
+/* 卡片本身已經有玻璃感，為了更像 iOS 可微增強 */
+#page-info .card{
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+}
+
+/* ===== 分析頁：精簡加總列 ===== */
+.sumbar{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px;
+  padding: 8px 12px;            /* 薄一點，避免佔高 */
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  margin: 12px auto;            /* 與清單同寬（放在 wrap > .card 前面） */
+}
+.sum-left{
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  min-height: 26px;             /* 小小一條就好 */
+}
+.sum-tag{
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  border:1px solid var(--field-border);
+  background: var(--field-bg); color: var(--fg);
+  cursor: pointer;
+}
+.sum-tag:hover{ filter: brightness(0.97); }
+.sum-tag .x{
+  font-weight: 900; opacity:.6; line-height:1; transform: translateY(-.5px);
+}
+.sum-right{
+  font-weight: 900; font-size: 16px; white-space: nowrap;
+}
+
+/* 沒有特定類別時（等於全部）顯示灰色徽章 */
+.sum-tag.is-all{
+  cursor: default;
+  opacity:.72;
+}
+
+/* 日期 pill（小、不外溢） */
+.date-field{
+  position: relative;
+  width: 90px; min-width: 90px;
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
+  border-radius: 10px;
+  height: 30px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
+}
+
+.date-display{
+  font-size: 12px; font-weight:700; letter-spacing:.2px;
+  color: var(--fg);
+  pointer-events: none;
+}
+
+/* 真正的 date input 當透明覆蓋層：可點但不佔視覺寬度 */
+.date-field input[type="date"]{
+  position:absolute; inset:0;
+  opacity:0;          /* 完全透明，仍可點擊呼叫原生日期選擇器 */
+  width:100%; height:100%;
+  cursor:pointer;
+}
+
+/* ---- 修正：抽屜內日期 pill 不超出寬度 ---- */
+.flt-drawer .row.date-row{
+  gap: 6px;              /* 小一點的間距 */
+  flex-wrap: wrap;       /* 允許換行（極窄時可疊成兩行） */
+}
+
+.flt-drawer .row.date-row .date-field{
+  width: calc(50% - 3px); /* 兩等分，扣掉間距的一半 */
+  min-width: 0;           /* 防止被內容撐開 */
+}
+
+/* 再精簡一下內距與字級，確保小抽屜也穩 */
+.flt-drawer .date-field{ height: 28px; }
+.flt-drawer .date-display{ font-size: 12px; }
+
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- 右側抽屜（預設收合） -->
+    <aside id="sidebar" class="sidebar" aria-hidden="true">
+      <div class="sb-head">
+        <div class="sb-title">惠宇碧柳</div>
+        <button id="sbClose" class="sb-close" type="button" title="關閉">⇤</button>
+      </div>
+      <div class="sb-group">
+        <button class="sb-link" data-nav="info"><strong>資訊</strong></button>
+        <button class="sb-link" data-nav="home"><strong>記帳</strong></button>
+        <button class="sb-link" data-nav="insights"><strong>分析</strong></button>
+      </div>
+      <div class="sb-foot">v10 · iOS 亮/暗</div>
+    </aside>
+
+    <!-- 內容區 -->
+    <main class="content">
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="large-title">碧柳記帳冊 <span class="subtitle" id="meta"></span></div>
+          <div class="rightbar">
+            <div class="theme-toggle" aria-label="主題切換">
+              <div class="seg-sm" role="tablist">
+                <button id="thLight" class="active" type="button">亮</button>
+                <button id="thDark"  type="button">暗</button>
+              </div>
+            </div>
+            <button id="btnMenu" class="menu-btn" type="button">☰ Menu</button>
+          </div>
+        </div>
+        <div class="topbar-center">
+          <div class="page-name" id="pageName">資訊</div>
+        </div>
+      </div>
+
+      <!-- Page: Info -->
+      <section id="page-info" class="wrap" hidden>
+        <div class="card" style="text-align:center; padding-top:28px;">
+          <!-- logo：自適應比例 + 圓角一致 -->
+          <div class="logo-box">
+            <img id="infoLogo" alt="logo">
+          </div>
+
+          <h1 style="font-size:clamp(28px,4.6vw,38px); margin:6px 0 4px; letter-spacing:-.02em; font-weight:800; color:var(--moss-ink);">
+            惠宇碧柳
+          </h1>
+
+          <!-- 中文地址 + 英文地址（英文從原標題列搬來這裡） -->
+          <div style="color:var(--muted); font-weight:600; margin-bottom:14px; line-height:1.5;">
+            <div>406015 台中市北屯區詔安街88號4樓之21</div>
+            <div id="addrEn">4F-21, No. 88, Zhao'an Street, Beitun District, Taichung City 406015, Taiwan (R.O.C.)</div>
+          </div>
+
+          <div class="row" style="justify-content:center; gap:14px;">
+            <div class="col" style="max-width:520px;">
+              <div class="card" style="margin:0; text-align:left;">
+                <div style="font-size:14px; color:var(--muted); margin-bottom:10px;">貸款資訊</div>
+                <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;">
+                  <div>已繳貸款</div>
+                  <div id="loanPaid" style="font-weight:800;">—</div>
+
+                  <div>總額房屋貸款</div>
+                  <div id="loanTotal" style="font-weight:800;">12,000,000</div>
+
+                  <div>進度</div>
+                  <div id="loanPct" style="font-weight:800;">—%</div>
+                </div>
+
+                <!-- 視覺化進度條 -->
+                <div style="margin-top:12px;height:10px;border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;">
+                  <div id="loanBar" style="position:absolute; left:0; top:0; bottom:0; width:0%;
+                       background:linear-gradient(90deg, var(--moss), color-mix(in oklab, var(--moss) 60%, var(--tint)));
+                       border-radius:999px; box-shadow:0 6px 16px rgba(0,0,0,.08);"></div>
+                </div>
+
+                <!-- 新增：目前餘額 -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                  <div style="color:var(--muted); font-size:14px;">目前餘額</div>
+                  <div id="loanBalance" style="font-weight:800;">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page: Home（表單 + KPI） -->
+      <section id="page-home" class="wrap">
+        <div class="card">
+          <form id="f" autocomplete="off">
+            <div class="row">
+              <div class="col">
+                <label>日期</label>
+                <input type="date" name="date" required />
+              </div>
+              <div class="col">
+                <label>項目名稱</label>
+                <input type="text" name="title" placeholder="例如：房貸 / 空調尾款…" required />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+              <div class="col">
+                <label>項目類別</label>
+                <select name="category" id="category" required>
+                  <option value="" disabled selected>請選擇</option>
+                </select>
+              </div>
+
+              <div class="col">
+                <label>收入 / 支出</label>
+                <div class="seg" role="tablist" aria-label="收入或支出">
+                  <input type="radio" id="typeOut"  name="type" value="支出" checked>
+                  <label for="typeOut">支出</label>
+                  <input type="radio" id="typeIn"   name="type" value="收入">
+                  <label for="typeIn">收入</label>
+                </div>
+              </div>
+
+              <div class="col">
+                <label>金額</label>
+                <input type="number" inputmode="numeric" step="1" min="0" name="amount" placeholder="0" required />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+              <div class="col">
+                <label>付款人</label>
+                <select name="payer" id="payer" required>
+                  <option value="" disabled selected>請選擇</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="submitBtn" class="btn" type="submit">新增</button>
+              <span id="msg"></span>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 class="subtitle" style="margin:0 0 8px;">目前餘額</h3>
+          <div class="ink">
+            <div class="ink-card ink-income">
+              <div class="ink-label">總收入</div>
+              <div class="ink-value" id="inkIncome">—</div>
+            </div>
+            <div class="ink-card ink-expense">
+              <div class="ink-label">總支出</div>
+              <div class="ink-value" id="inkExpense">—</div>
+            </div>
+            <div class="ink-card ink-balance">
+              <div class="ink-label">目前餘額</div>
+              <div class="ink-value" id="inkBalance">—</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <button id="refreshBtn" class="btn" type="button">重新整理</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page: Insights（左抽屜篩選 + sticky 縮高圖 + 清單） -->
+      <section id="page-insights" class="wrap" hidden>
+        <!-- 左側 sort 抽屜 toggle -->
+        <button id="fltToggle" class="flt-toggle" type="button">⇥ <small>sort</small></button>
+
+        <!-- 左側抽屜 -->
+        <aside id="fltDrawer" class="flt-drawer" aria-hidden="true">
+          <div class="flt-title">篩選</div>
+
+          <div class="flt-group">
+            <div class="flt-label">日期區間</div>
+            <div class="row date-row" style="gap:8px;">
+              <div class="date-field">
+                <span class="date-display" id="dispFrom">—/—</span>
+                <input type="date" id="fltFrom" aria-label="起日">
+              </div>
+              <div class="date-field">
+                <span class="date-display" id="dispTo">—/—</span>
+                <input type="date" id="fltTo" aria-label="迄日">
+              </div>
+            </div>
+
+            <div class="segmulti" style="margin-top:8px;">
+              <button type="button" class="segbtn" data-q="this-month">本月</button>
+              <button type="button" class="segbtn" data-q="all">全部</button>
+            </div>
+          </div>
+
+          <div class="flt-group">
+            <div class="flt-label">收入 / 支出（可複選）</div>
+            <div id="segType" class="segmulti">
+              <button type="button" class="segbtn active" data-type="收入">收入</button>
+              <button type="button" class="segbtn active" data-type="支出">支出</button>
+            </div>
+          </div>
+
+          <div class="flt-group">
+            <div class="flt-label">類別（可複選）</div>
+            <div id="chipsCat" class="chips vertical"></div>
+          </div>
+
+          <div class="flt-group">
+            <div class="flt-label">付款人（可複選）</div>
+            <div id="chipsPayer" class="chips vertical"></div>
+          </div>
+        </aside>
+
+        <!-- sticky 圖表（左：分類長條｜右：時間累積） -->
+        <div class="card insights-sticky" id="chartsBox">
+          <h3 class="subtitle" style="margin:0 0 6px;">類別加總（左：分類｜右：時間累積）</h3>
+          <div class="chart-placeholder" id="chartPlaceholder">點選開啟圖表</div>
+          <div class="grid-2-tight" id="chartsGrid">
+            <div class="charts-compact"><canvas id="chartFeatured"></canvas></div>
+            <div class="charts-compact"><canvas id="chartOthers"></canvas></div>
+          </div>
+          <div class="chart-actions">
+            <button id="btnChartToggle" type="button" class="chart-toggle-btn">收合圖表</button>
+          </div>
+        </div>
+
+        <!-- 分析頁：篩選加總列（放在清單上方） -->
+        <div class="sumbar" id="sumBar">
+          <div class="sum-left" id="sumTags"><!-- 類別小氣泡會由 JS 注入 --></div>
+          <div class="sum-right"><span id="sumTotal">—</span></div>
+        </div>
+
+        <!-- 清單 -->
+        <div class="card">
+          <div class="meta-row">
+            <div>清單（<span id="rowCount">0</span> 筆）</div>
+            <div id="rowsMsg" class="subtitle"></div>
+          </div>
+          <div style="overflow:auto;">
+            <table id="tbl">
+              <thead>
+                <tr>
+                  <th data-k="date">日期</th>
+                  <th data-k="title">項目名稱</th>
+                  <th data-k="category">類別</th>
+                  <th data-k="amount" class="t-right">金額</th>
+                  <th data-k="type">收入/支出</th>
+                  <th data-k="payer">付款人</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script>
+(function(){
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+// ---- 日期顯示：把 input 的值轉成 MM/DD 顯示在相鄰 .date-display ----
+function bindShortDate(inpId, dispId){
+  const inp = document.getElementById(inpId);
+  const disp = document.getElementById(dispId);
+  if (!inp || !disp) return;
+  const sync = ()=>{
+    if (inp.value) {
+      const [y,m,d] = inp.value.split('-');
+      disp.textContent = `${m}/${d}`;
+    } else {
+      disp.textContent = '—/—';
+    }
+  };
+  inp.addEventListener('change', ()=>{ sync(); applyFilters(); });
+  inp.addEventListener('input',  sync);
+  sync();
+}
+
+// 初始化（放在你 loadRows() 之後或路由切到 insights 後）
+bindShortDate('fltFrom','dispFrom');
+bindShortDate('fltTo','dispTo');
+
+// 快捷鍵（沿用你原本的 data-q 邏輯，記得刷新顯示）
+document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
+  btn.onclick = ()=>{
+    const tag = btn.dataset.q;
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+
+    if (tag === 'this-month'){
+      const from = new Date(y, m, 1).toISOString().slice(0,10);
+      const to   = new Date(y, m+1, 0).toISOString().slice(0,10);
+      document.getElementById('fltFrom').value = from;
+      document.getElementById('fltTo').value   = to;
+    } else { // 'all'
+      document.getElementById('fltFrom').value = '';
+      document.getElementById('fltTo').value   = '';
+    }
+    // 更新顯示 + 觸發篩選
+    const ev = new Event('change');
+    document.getElementById('fltFrom').dispatchEvent(ev);
+    document.getElementById('fltTo').dispatchEvent(ev);
+  };
+});
+
+  // ===== 主題切換 =====
+  const root = document.documentElement;
+  const thLight = $('#thLight'), thDark = $('#thDark');
+  function setTheme(mode){
+    root.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
+    localStorage.setItem('theme-mode', mode);
+    [thLight, thDark].forEach(b=>b.classList.remove('active'));
+    (mode === 'dark' ? thDark : thLight).classList.add('active');
+  }
+  setTheme(localStorage.getItem('theme-mode') || 'light');
+  thLight.onclick = ()=> setTheme('light');
+  thDark.onclick  = ()=> setTheme('dark');
+
+  // ===== 右側抽屜（主選單） =====
+  const sidebar = $('#sidebar');
+  $('#btnMenu').addEventListener('click', ()=>{
+    const open = sidebar.classList.toggle('open');
+    sidebar.setAttribute('aria-hidden', open ? 'false' : 'true');
+  });
+  $('#sbClose').addEventListener('click', ()=>{
+    sidebar.classList.remove('open');
+    sidebar.setAttribute('aria-hidden','true');
+  });
+  $$('.sb-link').forEach(b=> b.addEventListener('click', ()=>{
+    location.hash = '#' + b.dataset.nav;
+    sidebar.classList.remove('open');
+    sidebar.setAttribute('aria-hidden','true');
+  }));
+
+  // ===== Topbar meta：只顯示今日日期（地址移除） =====
+  const meta = $('#meta');
+  (function showTopDate(){
+    const todayStr = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    meta.textContent = todayStr;
+  })();
+
+  // ===== 表單（記帳） =====
+  const f = $('#f'), msg = $('#msg'), submitBtn = $('#submitBtn');
+  const selCat = $('#category'), selPayer = $('#payer');
+  const today = new Date();
+  const iso = new Date(today.getTime() - today.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  if (f) f.date.value = iso;
+  function tip(text){ if (!msg) return; msg.textContent = text||''; if (text) setTimeout(()=> msg.textContent='', 2500); }
+  function fmt(n){ return (Number(n||0)).toLocaleString(); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  function loadOptions(){
+    google.script.run
+      .withSuccessHandler(opt=>{
+        if (selCat)  fillSelect(selCat,  (opt && opt.categories) || []);
+        if (selPayer)fillSelect(selPayer,(opt && opt.payers)    || []);
+      })
+      .withFailureHandler(err=> console.warn('readOptions fail:', err && err.message))
+      .readOptions();
+  }
+  function fillSelect(sel, arr){
+    sel.innerHTML = `<option value="" disabled selected>請選擇</option>` +
+      arr.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  }
+  loadOptions();
+
+  if (f){
+    f.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      submitBtn.disabled = true; tip('送出中…');
+      const payload = Object.fromEntries(new FormData(f).entries());
+      google.script.run
+        .withSuccessHandler(()=>{
+          tip('已新增 ✅');
+          f.reset(); f.date.value = iso;
+          refreshTotals(); loadOptions();
+          if (!$('#page-insights').hidden) { loadRows(); refreshCharts(); }
+          submitBtn.disabled = false;
+        })
+        .withFailureHandler(err=>{
+          tip('失敗：' + (err && err.message || err));
+          submitBtn.disabled = false;
+        })
+        .writeEntry(payload);
+    });
+  }
+
+  // KPI
+  function renderKpis(d){
+    $('#inkIncome').textContent  = fmt(d.totalIncome);
+    $('#inkExpense').textContent = fmt(d.totalExpense);
+    $('#inkBalance').textContent = fmt(d.balance);
+  }
+  function refreshTotals(){
+    google.script.run.withSuccessHandler(renderKpis).readTotals();
+  }
+  $('#refreshBtn')?.addEventListener('click', ()=>{ refreshTotals(); loadOptions(); });
+  refreshTotals();
+
+  // ===== Info 頁：logo + 貸款進度 + 目前餘額 =====
+  function loadInfo(){
+      // 1) 讀 logo
+      google.script.run.withSuccessHandler(res => {
+        const img = document.getElementById('infoLogo');
+        const url = (res && res.url || '').trim();
+        const box = img?.closest('.logo-box');        // 你上一版有的 logo 容器（若沒用 logo-box 也沒關係）
+        const infoSection = document.getElementById('page-info');
+        if (!img || !url || !infoSection) return;
+
+        img.onload = () => {
+          // 設定資訊頁背景使用同一張圖片
+          infoSection.style.setProperty('--hero-img', `url("${url}")`);
+          // 視需要可調整整體透明度（0~1）
+          infoSection.style.setProperty('--hero-overlay-alpha', '0.92');
+
+          // 你的自適應 logo 寬高比例與兩倍尺寸設定（保持原邏輯）
+          const nw = img.naturalWidth || 1;
+          const nh = img.naturalHeight || 1;
+          const boxEl = box || img.parentElement;
+          if (boxEl){
+            boxEl.style.setProperty('--logo-ar', `${nw}/${nh}`);
+            boxEl.style.setProperty('--logo-w', '360px'); // 2x 尺寸
+          }
+          img.style.display = 'block';
+        };
+
+        img.onerror = () => {
+          console.warn('logo 載入失敗：', url);
+          // 背景也就不設了，保持原本底色
+        };
+
+        img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+         // 💡 重點：設定全屏背景用的 CSS 變數
+        document.body.style.setProperty('--hero-img', `url("${url}")`);
+        document.body.style.setProperty('--hero-overlay-alpha', '0.92');
+
+      }).getLogoUrl();
+
+      // 2) 讀貸款進度（維持原本）
+      google.script.run
+        .withSuccessHandler(d=>{
+          const fN = n => (Number(n||0)).toLocaleString();
+          document.getElementById('loanPaid').textContent  = fN(d.paid);
+          document.getElementById('loanTotal').textContent = fN(d.total);
+          document.getElementById('loanPct').textContent   = (d.percent ?? 0) + '%';
+          document.getElementById('loanBar').style.width   =
+            Math.max(0, Math.min(100, Number(d.percent || 0))) + '%';
+        })
+        .withFailureHandler(err=> console.warn('readLoanProgress fail:', err && err.message || err))
+        .readLoanProgress();
+
+      // 3) 目前餘額
+      google.script.run
+        .withSuccessHandler(t => {
+          document.getElementById('loanBalance').textContent =
+            (Number(t?.balance||0)).toLocaleString();
+        })
+        .withFailureHandler(() => {
+          document.getElementById('loanBalance').textContent = '—';
+        })
+        .readTotals();
+    }
+
+  // ===== 分析頁 =====
+  const tblBody  = $('#tbl tbody');
+  const rowCount = $('#rowCount');
+  const rowsMsg  = $('#rowsMsg');
+  let currentRows = [];
+  let filteredRows = [];
+  let sortState = { key:'date', dir:'desc' };
+  let chartFeatured, chartOthers;
+
+  // 左側 sort 抽屜
+  const fltToggle    = document.getElementById('fltToggle');
+  const fltDrawer    = document.getElementById('fltDrawer');
+  const pageInsights = document.getElementById('page-insights');
+
+  function setDrawer(open){
+    if (!fltDrawer || !fltToggle || !pageInsights) return;
+    const willOpen = !!open;
+    fltDrawer.classList.toggle('open', willOpen);
+    fltDrawer.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+    pageInsights.classList.toggle('flt-shift', willOpen);
+    fltToggle.style.left = willOpen ? `calc(var(--flt-w) + 6px)` : '6px';
+    fltToggle.innerHTML  = willOpen ? '⇤' : '⇥ <small>sort</small>';
+  }
+  fltToggle?.addEventListener('click', ()=> setDrawer(!fltDrawer.classList.contains('open')));
+
+  // 篩選控制（chips + segmented）
+  const fltFrom   = document.getElementById('fltFrom');
+  const fltTo     = document.getElementById('fltTo');
+  const segType   = document.getElementById('segType');
+  const chipsCat  = document.getElementById('chipsCat');
+  const chipsPayer= document.getElementById('chipsPayer');
+
+  const DEFAULT_CATS = new Set(['房貸','水電費','設備']);
+  let selectedTypes  = new Set(['收入','支出']);
+  let selectedCats   = new Set(DEFAULT_CATS);
+  let selectedPayers = new Set();
+
+  function makeChip(text, on){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (on ? ' active' : '');
+    b.textContent = text;
+    b.dataset.val = text;
+    b.addEventListener('click', ()=>{ b.classList.toggle('active'); applyFilters(); });
+    return b;
+  }
+
+  function buildChipsFromData(rows){
+    const cats   = Array.from(new Set(rows.map(r=> r.category || '（未分類）'))).sort();
+    const payers = Array.from(new Set(rows.map(r=> r.payer    || '（未填）'))).sort();
+
+    chipsCat.innerHTML = '';
+    selectedCats = new Set();
+    cats.forEach(c=>{
+      const on = DEFAULT_CATS.has(c);
+      if (on) selectedCats.add(c);
+      chipsCat.appendChild(makeChip(c, on));
+    });
+
+    chipsPayer.innerHTML = '';
+    selectedPayers = new Set(payers);
+    payers.forEach(p=> chipsPayer.appendChild(makeChip(p, true)));
+
+    // 收入/支出（可複選）
+    segType.querySelectorAll('.segbtn').forEach(btn=>{
+      btn.onclick = ()=>{
+        const v = btn.dataset.type;
+        btn.classList.toggle('active');
+        if (btn.classList.contains('active')) selectedTypes.add(v);
+        else selectedTypes.delete(v);
+        if (selectedTypes.size === 0){ selectedTypes.add(v); btn.classList.add('active'); }
+        applyFilters();
+      };
+    });
+
+    fltFrom.onchange = applyFilters;
+    fltTo.onchange   = applyFilters;
+
+  }
+
+  function loadRows(){
+    if (!tblBody) return;
+    rowsMsg.textContent = '載入中…';
+    google.script.run
+      .withSuccessHandler(res=>{
+        const raw = Array.isArray(res?.rows) ? res.rows : [];
+        currentRows = raw.map(r=>{
+          const amt = Number(String(r.amount||'').replace(/,/g,'').trim()) || 0;
+          let d = null;
+          if (r.dateStr){
+            const m = String(r.dateStr).match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+            d = m ? new Date(+m[1], +m[2]-1, +m[3]) : new Date(r.dateStr);
+          }
+          if (!(d instanceof Date) || isNaN(d)) d = new Date(0);
+          return { ...r, amount: amt, date: d };
+        });
+
+        buildChipsFromData(currentRows);
+        fltFrom.value = ''; fltTo.value = '';   // 預設「全部」
+        setDrawer(false);                       // 預設收合
+        applyFilters();
+        rowsMsg.textContent = '';
+      })
+      .withFailureHandler(err=>{
+        rowsMsg.textContent = '讀取失敗：' + (err?.message || err);
+        console.error('readRowsLatest fail:', err);
+      })
+      .readRowsLatest(1000);
+  }
+
+  function renderTable(rowsIn){
+    const rows = [...(rowsIn||[])].sort((a,b)=>{
+      const k = sortState.key, dir = sortState.dir === 'asc' ? 1 : -1;
+      let va = a[k], vb = b[k];
+      if (k === 'amount') { va = Number(va||0); vb = Number(vb||0); }
+      if (k === 'date' || k === 'dateStr') {
+        va = new Date(a.dateStr || a.date); vb = new Date(b.dateStr || b.date);
+      }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return  1 * dir;
+      return 0;
+    });
+    tblBody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.dateStr || '')}</td>
+        <td>${escapeHtml(r.title || '')}</td>
+        <td>${escapeHtml(r.category || '')}</td>
+        <td class="t-right">${(Number(r.amount||0)).toLocaleString()}</td>
+        <td>${escapeHtml(r.type || '')}</td>
+        <td>${escapeHtml(r.payer || '')}</td>
+      </tr>
+    `).join('');
+  }
+  $$('#tbl thead th').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.k; if (!k) return;
+      if (sortState.key === k) sortState.dir = (sortState.dir === 'asc' ? 'desc' : 'asc');
+      else { sortState.key = k; sortState.dir = 'asc'; }
+      renderTable(filteredRows);
+    });
+  });
+
+  function drawChartsFromRows(rows){
+    // 左圖：分類長條（含數值標籤）
+    const byCat = {};
+    rows.forEach(r=>{
+      const c = (r.category || '（未分類）').trim();
+      if (!byCat[c]) byCat[c] = { inc:0, exp:0, tot:0 };
+      const n = Number(r.amount||0) || 0;
+      if (r.type === '收入') byCat[c].inc += n; else byCat[c].exp += n;
+      byCat[c].tot += n;
+    });
+    const catSorted = Object.entries(byCat).sort((a,b)=> b[1].tot - a[1].tot);
+    const L = { labels: catSorted.map(([k])=>k),
+                inc:    catSorted.map(([,v])=>v.inc),
+                exp:    catSorted.map(([,v])=>v.exp) };
+
+    // 右圖：時間軸「累積」折線（類別軸避免 adapter 需求）
+    const daily = new Map(); // yyyy-MM-dd -> {inc,exp}
+    const toDate = r=>{
+      if (r.dateStr){
+        const m = String(r.dateStr).match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+        return m ? new Date(Number(m[1]), Number(m[2])-1, Number(m[3])) : new Date(r.dateStr);
+      }
+      return r.date ? new Date(r.date) : new Date(0);
+    };
+    [...rows].sort((a,b)=> toDate(a) - toDate(b)).forEach(r=>{
+      const d = toDate(r); if (!(d instanceof Date) || isNaN(d)) return;
+      const k = d.toISOString().slice(0,10);
+      if (!daily.has(k)) daily.set(k,{inc:0,exp:0});
+      const v = daily.get(k), n = Number(r.amount||0) || 0;
+      if (r.type === '收入') v.inc += n; else v.exp += n;
+    });
+    const labelsT = Array.from(daily.keys()).sort();
+    let accInc = 0, accExp = 0;
+    const seriesInc = [], seriesExp = [];
+    labelsT.forEach(k=>{ const v = daily.get(k); accInc += v.inc; accExp += v.exp; seriesInc.push(accInc); seriesExp.push(accExp); });
+
+    // 重畫
+    if (chartFeatured) chartFeatured.destroy();
+    if (chartOthers)   chartOthers.destroy();
+
+    // 柱頂數值標籤
+    const valueLabelPlugin = {
+      id: 'valueLabel',
+      afterDatasetsDraw(chart){
+        const {ctx} = chart;
+        ctx.save();
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans"';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--fg') || '#111';
+        chart.data.datasets.forEach((dset, di)=>{
+          const meta = chart.getDatasetMeta(di);
+          if (meta.type !== 'bar') return;
+          meta.data.forEach((bar, i)=>{
+            const val = dset.data[i]; if (val == null) return;
+            const p = bar.tooltipPosition();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+            ctx.fillText(Number(val).toLocaleString(), p.x, p.y - 4);
+          });
+        });
+        ctx.restore();
+      }
+    };
+
+    chartFeatured = new Chart(document.getElementById('chartFeatured').getContext('2d'), {
+      type: 'bar',
+      data: { labels: L.labels, datasets: [
+        { label:'收入', data: L.inc,  borderWidth:1 },
+        { label:'支出', data: L.exp,  borderWidth:1 }
+      ]},
+      options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } }, plugins:{ legend:{ position:'top' } } },
+      plugins: [valueLabelPlugin]
+    });
+
+    const typesNow = new Set(Array.from(document.querySelectorAll('#segType .segbtn.active')).map(b=>b.dataset.type));
+    const datasetsT = [];
+    if (typesNow.has('收入')) datasetsT.push({ label:'收入(累積)', data: seriesInc, borderWidth:2, type:'line' });
+    if (typesNow.has('支出')) datasetsT.push({ label:'支出(累積)', data: seriesExp, borderWidth:2, type:'line' });
+
+    chartOthers = new Chart(document.getElementById('chartOthers').getContext('2d'), {
+      type: 'line',
+      data: { labels: labelsT, datasets: datasetsT },
+      options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true }, x:{ type:'category' } }, plugins:{ legend:{ position:'top' } } }
+    });
+  }
+
+  function refreshCharts(){ drawChartsFromRows(filteredRows.length ? filteredRows : currentRows); }
+
+  function applyFilters(){
+    const getAct = sel => Array.from(sel.querySelectorAll('.active')).map(b=> b.dataset.val || b.dataset.type);
+    const cats   = new Set(getAct(chipsCat));
+    const pays   = new Set(getAct(chipsPayer));
+    const types  = new Set(getAct(segType));
+    const from = fltFrom.value ? new Date(fltFrom.value + 'T00:00:00') : null;
+    const to   = fltTo.value   ? new Date(fltTo.value   + 'T23:59:59') : null;
+
+    filteredRows = currentRows.filter(r=>{
+      const d = r.dateStr ? new Date(r.dateStr.replace(/\./g,'/')) : (r.date ? new Date(r.date) : null);
+      if (from && d && d < from) return false;
+      if (to   && d && d > to)   return false;
+      const c = r.category || '（未分類）';
+      const p = r.payer    || '（未填）';
+      const t = r.type     || '';
+      if (cats.size  && !cats.has(c))  return false;
+      if (pays.size  && !pays.has(p))  return false;
+      if (types.size && !types.has(t)) return false;
+      return true;
+    });
+
+    rowCount.textContent = String(filteredRows.length);
+    renderTable(filteredRows);
+    refreshCharts();
+
+    renderSumBar();
+  }
+
+  // ===== 圖表收合/展開 =====
+  const chartsBox   = document.getElementById('chartsBox');
+  const chartPh     = document.getElementById('chartPlaceholder');
+  const btnChartTgl = document.getElementById('btnChartToggle');
+
+  function setChartsCollapsed(on){
+    chartsBox.classList.toggle('collapsed', !!on);
+    btnChartTgl.textContent = on ? '展開圖表' : '收合圖表';
+    setTimeout(()=>{ chartFeatured?.resize(); chartOthers?.resize(); }, 0);
+  }
+  btnChartTgl?.addEventListener('click', ()=>{
+    const on = !chartsBox.classList.contains('collapsed');
+    setChartsCollapsed(on);
+  });
+  chartPh?.addEventListener('click', ()=> setChartsCollapsed(false));
+
+  // ===== 路由 + 分頁名稱 =====
+  const pageNameEl = document.getElementById('pageName');
+  const pageNames  = { info:'資訊', home:'記帳', insights:'分析' };
+
+  function showPage(name){
+    $('#page-info').hidden     = (name !== 'info');
+    $('#page-home').hidden     = (name !== 'home');
+    $('#page-insights').hidden = (name !== 'insights');
+    $$('.sb-link').forEach(b=> b.classList.toggle('active', b.dataset.nav === name));
+    pageNameEl.textContent = pageNames[name] || '';
+    if (name === 'insights') { setDrawer(false); loadRows(); }
+    if (name === 'info')     { loadInfo(); }
+  }
+  function applyHash(){
+    const h = (location.hash || '#info').replace('#','');
+    showPage(['info','home','insights'].includes(h) ? h : 'info');
+  }
+  window.addEventListener('hashchange', applyHash);
+  applyHash();
+
+/* === 分析頁：加總列 ===
+   - 顯示目前「類別」的選取（= 左抽屜 chips 的 active）
+   - 右側顯示金額合計（在 filteredRows 基礎上再依類別聚合）
+   - 點氣泡 → 取消該類別（等同取消左抽屜 chip）並重算
+*/
+function renderSumBar(){
+  const sumTagsBox = document.getElementById('sumTags');
+  const sumTotalEl = document.getElementById('sumTotal');
+  if (!sumTagsBox || !sumTotalEl) return;
+
+  // 目前「有被選中」的類別（= 左抽屜 chips.active）
+  const activeCats = Array.from(document.querySelectorAll('#chipsCat .chip.active'))
+    .map(b => b.dataset.val);
+
+  // 如果沒有任何類別被選中，語意上＝全部類別
+  const usingAll = activeCats.length === 0;
+
+  // 準備要顯示在左邊的小氣泡們
+  sumTagsBox.innerHTML = '';
+  if (usingAll){
+    const tag = document.createElement('span');
+    tag.className = 'sum-tag is-all';
+    tag.textContent = '全部類別';
+    sumTagsBox.appendChild(tag);
+  } else {
+    activeCats.forEach(cat=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sum-tag';
+      btn.innerHTML = `<span>${cat}</span><span class="x">×</span>`;
+      btn.addEventListener('click', ()=>{
+        // 取消左抽屜對應 chip 的 active
+        const chip = Array.from(document.querySelectorAll('#chipsCat .chip'))
+          .find(c => c.dataset.val === cat);
+        if (chip){ chip.classList.remove('active'); }
+        applyFilters(); // 會順便重畫表格/圖表/加總列
+      });
+      sumTagsBox.appendChild(btn);
+    });
+  }
+
+  // 計算加總：在「已套用其他條件」的 filteredRows 裡再根據 activeCats 合計
+  let total = 0;
+  // 當使用「全部」時，容許所有類別；否則只算 activeCats 內的
+  const allowSet = usingAll
+    ? null
+    : new Set(activeCats);
+
+  filteredRows.forEach(r=>{
+    const cat = (r.category || '（未分類）').trim();
+    if (allowSet && !allowSet.has(cat)) return;
+    // 這裡以「金額相加」為準（不論收入/支出）
+    // 若你要把支出視為負數，改成：const val = (r.type === '支出' ? -1 : 1) * Number(r.amount||0)
+    const val = Number(r.amount || 0);
+    total += val;
+  });
+
+  sumTotalEl.textContent = total.toLocaleString();
+}
+  
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>碧柳記帳冊 v10</title>
+  <style><?!= include('css'); ?></style>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0f12"  media="(prefers-color-scheme: dark)">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="has-tabbar">
+  <div class="app">
+    <!-- 右側抽屜（預設收合） -->
+    <aside id="sidebar" class="sidebar" aria-hidden="true">
+      <div class="sb-head">
+        <div class="sb-title">惠宇碧柳</div>
+        <button id="sbClose" class="sb-close" type="button" title="關閉">⇤</button>
+      </div>
+      <div class="sb-group">
+        <button class="sb-link" data-nav="info"><strong>資訊</strong></button>
+        <button class="sb-link" data-nav="home"><strong>記帳</strong></button>
+        <button class="sb-link" data-nav="insights"><strong>分析</strong></button>
+        <button class="sb-link" data-nav="links"><strong>連結</strong></button>
+      </div>
+      <div class="sb-foot">v10 · iOS 亮/暗</div>
+    </aside>
+
+    <!-- 內容區 -->
+    <main class="content">
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="large-title">碧柳記帳冊 <span class="subtitle" id="meta"></span></div>
+          <div class="rightbar">
+            <div class="theme-toggle" aria-label="主題切換">
+              <div class="seg-sm" role="tablist">
+                <button id="thLight" class="active" type="button">亮</button>
+                <button id="thDark"  type="button">暗</button>
+              </div>
+            </div>
+            <button id="btnMenu" class="menu-btn" type="button">☰ Menu</button>
+          </div>
+        </div>
+        <div class="topbar-center">
+          <div class="page-name" id="pageName">資訊</div>
+        </div>
+      </div>
+
+      <!-- Page: Info -->
+      <section id="page-info" class="wrap" hidden>
+        <div class="card" style="text-align:center; padding-top:28px;">
+          <!-- logo：自適應比例 + 圓角一致 -->
+          <div class="logo-box">
+            <img id="infoLogo" alt="logo">
+          </div>
+
+          <h1 style="font-size:clamp(28px,4.6vw,38px); margin:6px 0 4px; letter-spacing:-.02em; font-weight:800; color:var(--moss-ink);">
+            惠宇碧柳
+          </h1>
+
+          <!-- 中文地址 + 英文地址（英文從原標題列搬來這裡） -->
+          <div style="color:var(--muted); font-weight:600; margin-bottom:14px; line-height:1.5;">
+            <div>406015 台中市北屯區詔安街88號4樓之21</div>
+            <div id="addrEn">4F-21, No. 88, Zhao'an Street, Beitun District, Taichung City 406015, Taiwan (R.O.C.)</div>
+          </div>
+
+          <div class="row" style="justify-content:center; gap:14px;">
+            <div class="col" style="max-width:520px;">
+              <div class="card" style="margin:0; text-align:left;">
+                <div style="font-size:14px; color:var(--muted); margin-bottom:10px;">貸款資訊</div>
+                <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;">
+                  <div>已繳貸款</div>
+                  <div id="loanPaid" style="font-weight:800;">—</div>
+
+                  <div>總額房屋貸款</div>
+                  <div id="loanTotal" style="font-weight:800;">12,000,000</div>
+
+                  <div>進度</div>
+                  <div id="loanPct" style="font-weight:800;">—%</div>
+                </div>
+
+                <!-- 視覺化進度條 -->
+                <div style="margin-top:12px;height:10px;border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;">
+                  <div id="loanBar" style="position:absolute; left:0; top:0; bottom:0; width:0%;
+                       background:linear-gradient(90deg, var(--moss), color-mix(in oklab, var(--moss) 60%, var(--tint)));
+                       border-radius:999px; box-shadow:0 6px 16px rgba(0,0,0,.08);"></div>
+                </div>
+
+                <!-- 新增：目前餘額 -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                  <div style="color:var(--muted); font-size:14px;">目前餘額</div>
+                  <div id="loanBalance" style="font-weight:800;">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page: Home（表單 + KPI） -->
+      <section id="page-home" class="wrap">
+        <div class="card">
+          <form id="f" autocomplete="off">
+            <div class="row">
+              <div class="col">
+                <label>日期</label>
+                <input type="date" name="date" required />
+              </div>
+              <div class="col">
+                <label>項目名稱</label>
+                <input type="text" name="title" placeholder="例如：房貸 / 空調尾款…" required />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+              <div class="col">
+                <label>項目類別</label>
+                <select name="category" id="category" required>
+                  <option value="" disabled selected>請選擇</option>
+                </select>
+              </div>
+
+              <div class="col">
+                <label>收入 / 支出</label>
+                <div class="seg" role="tablist" aria-label="收入或支出">
+                  <input type="radio" id="typeOut"  name="type" value="支出" checked>
+                  <label for="typeOut">支出</label>
+                  <input type="radio" id="typeIn"   name="type" value="收入">
+                  <label for="typeIn">收入</label>
+                </div>
+              </div>
+
+              <div class="col">
+                <label>金額</label>
+                <input type="number" inputmode="numeric" step="1" min="0" name="amount" placeholder="0" required />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+              <div class="col">
+                <label>付款人</label>
+                <select name="payer" id="payer" required>
+                  <option value="" disabled selected>請選擇</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="submitBtn" class="btn" type="submit">新增</button>
+              <span id="msg"></span>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 class="subtitle" style="margin:0 0 8px;">目前餘額</h3>
+          <div class="ink">
+            <div class="ink-card ink-income">
+              <div class="ink-label">總收入</div>
+              <div class="ink-value" id="inkIncome">—</div>
+            </div>
+            <div class="ink-card ink-expense">
+              <div class="ink-label">總支出</div>
+              <div class="ink-value" id="inkExpense">—</div>
+            </div>
+            <div class="ink-card ink-balance">
+              <div class="ink-label">目前餘額</div>
+              <div class="ink-value" id="inkBalance">—</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <button id="refreshBtn" class="btn" type="button">重新整理</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page: Insights（左抽屜篩選 + sticky 縮高圖 + 清單） -->
+      <section id="page-insights" class="wrap" hidden>
+        <!-- 左側 sort 抽屜 toggle -->
+        <button id="fltToggle" class="flt-toggle" type="button">⇥ <small>sort</small></button>
+
+        <!-- 左側抽屜 -->
+        <aside id="fltDrawer" class="flt-drawer" aria-hidden="true">
+          <div class="flt-title">篩選</div>
+
+          <div class="flt-group">
+            <div class="flt-label">日期區間</div>
+            <div class="row date-row" style="gap:8px;">
+              <div class="date-field">
+                <span class="date-display" id="dispFrom">—/—</span>
+                <input type="date" id="fltFrom" aria-label="起日">
+              </div>
+              <div class="date-field">
+                <span class="date-display" id="dispTo">—/—</span>
+                <input type="date" id="fltTo" aria-label="迄日">
+              </div>
+            </div>
+
+            <div class="segmulti" style="margin-top:8px;">
+              <button type="button" class="segbtn" data-q="this-month">本月</button>
+              <button type="button" class="segbtn" data-q="all">全部</button>
+            </div>
+          </div>
+
+          <div class="flt-group">
+            <div class="flt-label">收入 / 支出（可複選）</div>
+            <div id="segType" class="segmulti">
+              <button type="button" class="segbtn active" data-type="收入">收入</button>
+              <button type="button" class="segbtn active" data-type="支出">支出</button>
+            </div>
+          </div>
+
+          <div class="flt-group">
+            <div class="flt-label">類別（可複選）</div>
+            <div id="chipsCat" class="chips vertical"></div>
+          </div>
+
+          <div class="flt-group">
+            <div class="flt-label">付款人（可複選）</div>
+            <div id="chipsPayer" class="chips vertical"></div>
+          </div>
+        </aside>
+
+        <!-- sticky 圖表（左：分類長條｜右：時間累積） -->
+        <div class="card insights-sticky" id="chartsBox">
+          <h3 class="subtitle" style="margin:0 0 6px;">類別加總（左：分類｜右：時間累積）</h3>
+          <div class="chart-placeholder" id="chartPlaceholder">點選開啟圖表</div>
+          <div class="grid-2-tight" id="chartsGrid">
+            <div class="charts-compact"><canvas id="chartFeatured"></canvas></div>
+            <div class="charts-compact"><canvas id="chartOthers"></canvas></div>
+          </div>
+          <div class="chart-actions">
+            <button id="btnChartToggle" type="button" class="chart-toggle-btn">收合圖表</button>
+          </div>
+        </div>
+
+        <!-- 分析頁：篩選加總列（放在清單上方） -->
+        <div class="sumbar" id="sumBar">
+          <div class="sum-left" id="sumTags"><!-- 類別小氣泡會由 JS 注入 --></div>
+          <div class="sum-right"><span id="sumTotal">—</span></div>
+        </div>
+
+        <!-- 清單 -->
+        <div class="card">
+          <div class="meta-row">
+            <div>清單（<span id="rowCount">0</span> 筆）</div>
+            <div id="rowsMsg" class="subtitle"></div>
+          </div>
+          <div style="overflow:auto;">
+            <table id="tbl">
+              <thead>
+                <tr>
+                  <th data-k="date">日期</th>
+                  <th data-k="title">項目名稱</th>
+                  <th data-k="category">類別</th>
+                  <th data-k="amount" class="t-right">金額</th>
+                  <th data-k="type">收入/支出</th>
+                  <th data-k="payer">付款人</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <?!= include('form_link'); ?>
+    </main>
+    <nav class="tabbar" role="tablist" aria-label="底部導覽">
+      <div class="tab-inner">
+        <a href="#info" class="tab-item" data-nav="info">
+          <span class="tab-ico" aria-hidden="true">🏠</span>
+          <span class="tab-label">資訊</span>
+        </a>
+        <a href="#home" class="tab-item" data-nav="home">
+          <span class="tab-ico" aria-hidden="true">🧾</span>
+          <span class="tab-label">記帳</span>
+        </a>
+        <a href="#insights" class="tab-item" data-nav="insights">
+          <span class="tab-ico" aria-hidden="true">📊</span>
+          <span class="tab-label">分析</span>
+        </a>
+        <button type="button" id="tabMenu" class="tab-item" data-nav="menu">
+          <span class="tab-ico" aria-hidden="true">☰</span>
+          <span class="tab-label">選單</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+</div>
+<script><?!= include('form_js'); ?></script>
+<script><?!= include('links_js'); ?></script>
+<script>
+(function(){
+  function highlightTab(name){
+    document.querySelectorAll('.tabbar .tab-item').forEach(function(el){
+      el.classList.toggle('active', el.dataset.nav === name);
+    });
+  }
+
+  function currentPageFromHash(){
+    var h = (location.hash || '#info').replace('#','');
+    return ['info','home','insights','links'].indexOf(h) >= 0 ? h : 'info';
+  }
+
+  // 初始與 hash 變更時，同步底部 Tab 高亮
+  window.addEventListener('hashchange', function(){ highlightTab(currentPageFromHash()); });
+  highlightTab(currentPageFromHash());
+
+  // 右側「選單」：暫時導向 #links（之後可改為打開更多功能面板）
+  var btnMenu = document.getElementById('tabMenu');
+  if (btnMenu){
+    btnMenu.addEventListener('click', function(){
+      location.hash = '#links';
+    });
+  }
+
+  // 讓點擊三個分頁按鈕時也能正確高亮（避免某些瀏覽器不觸發 hashchange）
+  document.querySelectorAll('.tabbar .tab-item[href^="#"]').forEach(function(a){
+    a.addEventListener('click', function(){
+      setTimeout(function(){ highlightTab(currentPageFromHash()); }, 0);
+    });
+  });
+})();
+</script>
+</body>
+</html>
