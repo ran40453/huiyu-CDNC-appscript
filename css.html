@@ -429,13 +429,32 @@ html[data-theme="dark"] #page-info::after{
 .micon{ font-family: 'Material Icons Round', 'Material Icons', system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans', sans-serif; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 /* ===== 手機底部 Tabbar（<=1024px 顯示） ===== */
-:root{ --tabbar-h: 72px; }
+:root{ --tabbar-h: 144px; }
 .tabbar{ position: fixed; left: 0; right: 0; bottom: 0; height: var(--tabbar-h); background: var(--card); border-top: 1px solid var(--line); -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur); box-shadow: 0 -12px 28px rgba(0,0,0,.06); z-index: 40; display: none; }
-.tabbar .tab-inner{ height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 14px; }
-.tabbar .tab-item{ display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); background: var(--field-bg); color: var(--fg); border-radius: 999px; cursor: pointer; text-decoration: none; user-select: none; transition: transform .08s ease, background .2s ease, box-shadow .2s ease; box-shadow: 0 2px 0 rgba(255,255,255,.3) inset, 0 6px 14px rgba(0,0,0,.04); }
+.tabbar .tab-inner{
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 0;
+  padding: 12px 18px;
+}
+.tabbar .tab-item{
+  width: 72px; height: 72px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--field-bg); color: var(--fg);
+  border-radius: 50%;
+  cursor: pointer; text-decoration: none; user-select: none;
+  transition: transform .08s ease, background .2s ease, box-shadow .2s ease;
+  box-shadow: 0 2px 0 rgba(255,255,255,.3) inset, 0 6px 14px rgba(0,0,0,.04);
+}
 .tabbar .tab-item:active{ transform: translateY(1px) scale(.98); }
-.tabbar .tab-item .micon{ font-size: 22px; }
-.tabbar .tab-item.active{ background: var(--tint); color: #fff; border-color: transparent; box-shadow: 0 8px 18px rgba(10,132,255,.25); }
+.tabbar .tab-item .micon{ font-size: 30px; }
+.tabbar .tab-item.active{
+  background: var(--tint); color: #fff; border-color: transparent;
+  box-shadow: 0 8px 18px rgba(10,132,255,.25);
+}
 .tabbar .tab-label{ display: none; } /* 以 icon 為主，保留 label 以後擴充 */
 
 /* 頁面內容在手機時預留底部高度，避免被 tabbar 蓋住 */
@@ -456,4 +475,25 @@ html[data-theme="dark"] #page-info::after{
 .menu-btn{ display:flex; align-items:center; justify-content:center; height: 54px; border:1px solid var(--line); background: var(--field-bg); color: var(--fg); border-radius: 14px; cursor: pointer; transition: transform .08s ease, background .2s ease; }
 .menu-btn:active{ transform: translateY(1px) scale(.98); }
 .menu-btn .micon{ font-size: 22px; }
+
+/* === KPI 右側「共 N 筆」膠囊（JS 會插入 .kpi-pill） === */
+.kpi-pill{
+  display:inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px; line-height: 1.1;
+  border:1px solid currentColor;
+  opacity:.85;
+}
+
+/* === 支出組成 legend 預設樣式（若無 inline style 也能看） === */
+.legend-item{ display:inline-flex; align-items:center; gap:6px; font-size: 13px; }
+.legend-item .dot{
+  width:10px; height:10px; border-radius:999px; display:inline-block;
+  background: var(--muted);
+}
+
+/* === 地址複製按鈕（小型 icon 鈕：補 baseline 樣式；JS 已插入） === */
+.btn.addr-copy{ padding: 4px 6px; border-radius: 10px; }
+.btn.addr-copy .micon{ font-size: 18px; }
 </style>

@@ -25,6 +25,65 @@
   }
   bindCopyDelegation();
 
+  // ---- 響應式：手機隱藏右上 menu，亮暗按鈕放大 ----
+  function applyMobileTweaks(){
+    var isMobile = window.innerWidth <= 1024;
+    var topMenu  = document.getElementById('btnMenu');
+    if (topMenu){ topMenu.style.display = isMobile ? 'none' : ''; }
+    var thL = document.getElementById('thLight');
+    var thD = document.getElementById('thDark');
+    [thL, thD].forEach(function(btn){
+      if (!btn) return;
+      btn.style.transform = isMobile ? 'scale(2)' : '';
+      btn.style.transformOrigin = 'center';
+    });
+    if (thD) thD.style.marginLeft = isMobile ? '12px' : '';
+    if (thL) thL.style.marginRight = isMobile ? '12px' : '';
+  }
+  window.addEventListener('resize', applyMobileTweaks);
+  applyMobileTweaks();
+
+  // ---- 手機 tabbar：active 同步 + Menu sheet 開關（僅行為，樣式之後調） ----
+  function highlightTab(name){
+    $$('.tabbar .tab-item').forEach(function(el){ el.classList.toggle('active', el.dataset.nav === name); });
+  }
+  (function bindTabbar(){
+    var tb = document.querySelector('.tabbar');
+    if (!tb) return;
+    tb.addEventListener('click', function(e){
+      var a = e.target.closest('.tab-item[href^="#"]');
+      if (!a) return;
+      setTimeout(function(){ highlightTab((location.hash||'#info').replace('#','')); }, 0);
+    });
+    var menuBtn = document.getElementById('tabMenu');
+    var sheet   = document.getElementById('menuSheet');
+    if (menuBtn && sheet){
+      menuBtn.addEventListener('click', function(){ sheet.classList.toggle('open'); sheet.setAttribute('aria-hidden', sheet.classList.contains('open') ? 'false' : 'true'); });
+      // 額外加一組明確的 click 綁定，確保即使其他 handler 阻擋也能切換
+      menuBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); sheet.classList.toggle('open'); sheet.setAttribute('aria-hidden', sheet.classList.contains('open') ? 'false' : 'true'); });
+      // 最高優先權的全域捕獲，避免被其它 handler 吃掉
+      document.addEventListener('click', function(ev){
+        var t = ev.target;
+        if (t && t.closest && t.closest('#tabMenu')){
+          ev.preventDefault(); ev.stopPropagation();
+          sheet.classList.toggle('open');
+          sheet.setAttribute('aria-hidden', sheet.classList.contains('open') ? 'false' : 'true');
+        }
+      }, true);
+      sheet.addEventListener('click', function(e){ if (e.target === sheet) { sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); } });
+      sheet.querySelectorAll('[data-nav]').forEach(function(btn){ btn.addEventListener('click', function(){ var dest = btn.getAttribute('data-nav'); if (dest){ location.hash = '#'+dest; } sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); }); });
+      // 也允許用 ESC 關閉
+      document.addEventListener('keydown', function(e){ if (e.key === 'Escape'){ sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); } });
+    }
+  })();
+
+  function monthRange(d){
+    var y = d.getFullYear(), m = d.getMonth();
+    var from = new Date(y, m, 1);
+    var to   = new Date(y, m+1, 0, 23,59,59,999);
+    return { from: from, to: to };
+  }
+
 // ---- 日期顯示：把 input 的值轉成 MM/DD 顯示在相鄰 .date-display ----
 function bindShortDate(inpId, dispId){
   const inp = document.getElementById(inpId);
@@ -200,6 +259,31 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
         img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
 
+      // 在地址右側加入複製（Material icon）按鈕（中/英）
+      try{
+        var addrEn = document.getElementById('addrEn');
+        var addrZh = addrEn ? addrEn.previousElementSibling : null;
+        if (addrZh && !addrZh.id) addrZh.id = 'addrZh';
+        function injectCopyBtnInline(targetId){
+          var target = document.getElementById(targetId); if (!target) return;
+          if (target.nextElementSibling && target.nextElementSibling.matches && target.nextElementSibling.matches('.addr-copy')) return;
+          // 讓容器變成行內 flex，使按鈕貼在右側
+          var parent = target.parentElement;
+          if (parent){ parent.style.display = 'flex'; parent.style.alignItems = 'center'; parent.style.gap = '8px'; }
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn ghost addr-copy';
+          btn.setAttribute('data-copy', '#'+targetId);
+          btn.title = '複製地址';
+          btn.style.marginLeft = '6px';
+          btn.style.padding = '4px 6px';
+          btn.innerHTML = '<span class="micon" style="font-size:18px;line-height:1;vertical-align:middle;">content_copy</span>';
+          target.insertAdjacentElement('afterend', btn);
+        }
+        if (addrZh) injectCopyBtnInline('addrZh');
+        if (addrEn) injectCopyBtnInline('addrEn');
+      }catch(_e){}
+
          // 💡 重點：設定全屏背景用的 CSS 變數
         document.body.style.setProperty('--hero-img', `url("${url}")`);
         document.body.style.setProperty('--hero-overlay-alpha', '0.92');
@@ -229,7 +313,111 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
           document.getElementById('loanBalance').textContent = '—';
         })
         .readTotals();
+
+      // 4) Info 頁 KPI 與支出組成（抓資料後在前端計算）
+      google.script.run
+        .withSuccessHandler(function(res){
+          var raw = Array.isArray(res && res.rows) ? res.rows : [];
+          var rows = raw.map(function(r){
+            var amt = Number(String(r.amount||'').replace(/,/g,'').trim()) || 0;
+            var d = null;
+            if (r.dateStr){
+              var m = String(r.dateStr).match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+              d = m ? new Date(+m[1], +m[2]-1, +m[3]) : new Date(r.dateStr);
+            }
+            if (!(d instanceof Date) || isNaN(d)) d = new Date(0);
+            return { title:r.title, category:r.category, amount:amt, type:r.type, payer:r.payer, dateStr:r.dateStr, __date:d };
+          });
+          renderInfoKPIs(rows);
+          renderInfoCatbar(rows);
+        })
+        .withFailureHandler(function(err){ console.warn('readRowsLatest for info fail:', err && err.message || err); })
+        .readRowsLatest(50000);
     }
+
+  // ===== Info 頁：本月重點 KPI + 類別支出組成 =====
+  function numberSum(arr){ var s=0; for (var i=0;i<arr.length;i++){ s += Number(arr[i]||0); } return s; }
+  function isInMonth(d, range){ return d && d >= range.from && d <= range.to; }
+
+  // 建立 KPI 計數膠囊
+  function setKpiWithCount(id, value, count){
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = Number(value||0).toLocaleString();
+    var parent = el.parentElement; // 讓父層橫向排列
+    if (parent){ parent.style.display = 'flex'; parent.style.alignItems = 'baseline'; parent.style.gap = '8px'; }
+    var pill = el.nextElementSibling && el.nextElementSibling.classList && el.nextElementSibling.classList.contains('kpi-pill') ? el.nextElementSibling : null;
+    if (!pill){ pill = document.createElement('span'); pill.className = 'kpi-pill'; pill.style.padding = '2px 8px'; pill.style.borderRadius = '999px'; pill.style.fontSize = '12px'; pill.style.opacity = '0.85'; pill.style.border = '1px solid currentColor'; el.insertAdjacentElement('afterend', pill); }
+    pill.textContent = '共' + String(count||0) + '筆';
+  }
+
+  function colorFor(key){
+    // 穩定分配色：依字串雜湊從一組調色盤取色
+    var palette = ['#6AA6FF','#8E9AFF','#F6A560','#6BD6A8','#F279B2','#A3DC6B','#B38CFF','#FFB86B','#60C7F6','#FF7A7A'];
+    var h=0; for (var i=0;i<key.length;i++){ h = ((h<<5)-h) + key.charCodeAt(i); h |= 0; }
+    var idx = Math.abs(h) % palette.length; return palette[idx];
+  }
+
+  function renderInfoKPIs(rows){
+    var mr = monthRange(new Date());
+    var inMonth = rows.filter(function(r){ var d = r.__date; return isInMonth(d, mr); });
+    var incThis = numberSum(inMonth.filter(function(r){ return r.type==='收入'; }).map(function(r){ return r.amount; }));
+    var expThis = numberSum(inMonth.filter(function(r){ return r.type==='支出'; }).map(function(r){ return r.amount; }));
+    var netThis = incThis - expThis;
+    var mgmtPaid = numberSum(inMonth.filter(function(r){ return (r.type==='支出') && /管理費/.test(String(r.category||'')); }).map(function(r){ return r.amount; }));
+    var utilSum  = numberSum(rows.filter(function(r){ return (r.type==='支出') && /水電/.test(String(r.category||'')); }).map(function(r){ return r.amount; }));
+    var equipSum = numberSum(rows.filter(function(r){ return (r.type==='支出') && /設備/.test(String(r.category||'')); }).map(function(r){ return r.amount; }));
+
+    // 計數（本月管理費 / 累積水電 / 累積設備）
+    var mgmtCount = inMonth.filter(function(r){ return (r.type==='支出') && /管理費/.test(String(r.category||'')); }).length;
+    var utilCount = rows.filter(function(r){ return (r.type==='支出') && /水電/.test(String(r.category||'')); }).length;
+    var equipCount= rows.filter(function(r){ return (r.type==='支出') && /設備/.test(String(r.category||'')); }).length;
+
+    // 文字
+    var netEl = document.getElementById('kpiThisMonth');
+    if (netEl) netEl.textContent = (netThis>=0? '' : '-') + Number(Math.abs(netThis)||0).toLocaleString();
+
+    setKpiWithCount('kpiMgmtPaid',     mgmtPaid,  mgmtCount);
+    setKpiWithCount('kpiUtilitiesSum', utilSum,   utilCount);
+    setKpiWithCount('kpiEquipment',    equipSum,  equipCount);
+  }
+
+  function renderInfoCatbar(rows){
+    var catMap = new Map();
+    var total = 0;
+    rows.forEach(function(r){
+      if (r.type !== '支出') return;
+      var cat = String(r.category||'').trim();
+      if (cat === '收入' || cat === '中信自動扣') return; // 排除
+      var n = Number(r.amount||0) || 0; if (n<=0) return;
+      total += n; var cur = catMap.get(cat)||0; catMap.set(cat, cur+n);
+    });
+
+    var track = document.getElementById('catbar-track');
+    var totalEl = document.getElementById('catbar-total');
+    var legend = document.getElementById('catlegend');
+    if (!track || !legend || !totalEl) return;
+    track.innerHTML = ''; legend.innerHTML = '';
+    if (total <= 0){ totalEl.textContent = '—'; return; }
+    totalEl.textContent = Number(total).toLocaleString();
+
+    var left = 0;
+    Array.from(catMap.entries()).sort(function(a,b){ return b[1]-a[1]; }).forEach(function(entry){
+      var cat = entry[0], val = entry[1];
+      var pct = (val/total)*100;
+      var seg = document.createElement('span');
+      seg.className = 'seg'; seg.style.position='absolute'; seg.style.top='0'; seg.style.bottom='0';
+      seg.style.left = left + '%'; seg.style.width = pct + '%'; seg.style.background = colorFor(cat);
+      track.appendChild(seg);
+      left += pct;
+
+      var li = document.createElement('span');
+      li.className = 'legend-item';
+      li.innerHTML = '<i class="dot" style="display:inline-block;width:10px;height:10px;border-radius:999px; background:'+colorFor(cat)+';"></i> ' +
+                     escapeHtml(cat) + ' ' + Number(val).toLocaleString();
+      legend.appendChild(li);
+    });
+  }
 
   // ===== 分析頁 =====
   const tblBody  = $('#tbl tbody');
@@ -589,6 +777,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   function applyHash(){
     const h = (location.hash || '#info').replace('#','');
     showPage(['info','home','insights','code'].includes(h) ? h : 'info');
+    highlightTab(['info','home','insights','code'].includes(h) ? h : 'info');
   }
   window.addEventListener('hashchange', applyHash);
   applyHash();
@@ -653,5 +842,15 @@ function renderSumBar(){
   sumTotalEl.textContent = total.toLocaleString();
 }
   
+  // 最後再綁一次以防止其他 handler 阻擋（捕獲階段）
+  (function(){
+    var b=document.getElementById('tabMenu'), s=document.getElementById('menuSheet');
+    if (b && s){
+      var toggle=function(ev){ ev.preventDefault(); ev.stopPropagation(); s.classList.toggle('open'); s.setAttribute('aria-hidden', s.classList.contains('open') ? 'false' : 'true'); };
+      b.addEventListener('click', toggle, true);
+      document.addEventListener('click', function(ev){ if (ev.target && ev.target.closest && ev.target.closest('#tabMenu')) toggle(ev); }, true);
+    }
+  })();
+
 })();
 </script>

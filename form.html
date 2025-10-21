@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>碧柳記帳冊 v10</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
   <?!= include('css'); ?>
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f0f12"  media="(prefers-color-scheme: dark)">
@@ -95,6 +96,52 @@
             </div>
           </div>
         </div>
+
+        <div class="card">
+          <h3 class="subtitle" style="margin:0 0 8px;">本月重點</h3>
+          <div class="row" style="gap:10px; align-items:stretch;">
+            <div class="col">
+              <div class="card" style="margin:0;">
+                <div class="subtitle" style="margin:0 0 6px;">本月總損益</div>
+                <div id="kpiThisMonth" style="font-weight:800; font-size:22px;">—</div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card" style="margin:0;">
+                <div class="subtitle" style="margin:0 0 6px;">已繳管理費</div>
+                <div id="kpiMgmtPaid" style="font-weight:800; font-size:22px;">—</div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card" style="margin:0;">
+                <div class="subtitle" style="margin:0 0 6px;">累積水電費</div>
+                <div id="kpiUtilitiesSum" style="font-weight:800; font-size:22px;">—</div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card" style="margin:0;">
+                <div class="subtitle" style="margin:0 0 6px;">設備費用</div>
+                <div id="kpiEquipment" style="font-weight:800; font-size:22px;">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="subtitle" style="margin:0 0 8px;">支出組成</h3>
+          <!-- dynamic stacked bar：JS 會把各類別的比例注入到 catbar-track 內的 segment -->
+          <div id="catbar" class="catbar" style="display:flex; align-items:center; gap:10px;">
+            <div id="catbar-track" class="catbar-track" style="flex:1 1 auto; height:14px; border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;">
+              <!-- JS inject: <span class="seg" style="position:absolute;left:0;width:25%;top:0;bottom:0;background:var(--tint);"></span> ... -->
+            </div>
+            <div id="catbar-total" class="catbar-total" style="min-width:80px; text-align:right; font-weight:700;">—</div>
+          </div>
+          <!-- legend：由 JS 自動生成；每個項目是一個圓點 + 類別名 + 金額 -->
+          <div id="catlegend" class="catlegend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">
+            <!-- JS inject: <span class="legend-item"><i class="dot" style="background:#abc;"></i> 房貸 12,345</span> ... -->
+          </div>
+          <div class="subtitle" style="margin-top:8px; color:var(--muted); font-size:12px;">* 自動排除：收入、中信自動扣；僅統計支出類別</div>
+        </div>
       </section>
 
       <!-- Page: Home（表單 + KPI） -->
@@ -171,54 +218,6 @@
           <div style="margin-top:10px;">
             <button id="refreshBtn" class="btn" type="button">重新整理</button>
           </div>
-        </div>
-
-        <!-- 本月重點 KPI：1) 本月總損益 2) 已繳管理費 3) 累積水電費 4) 設備費用 -->
-        <div class="card">
-          <h3 class="subtitle" style="margin:0 0 8px;">本月重點</h3>
-          <div class="row" style="gap:10px; align-items:stretch;">
-            <div class="col">
-              <div class="card" style="margin:0;">
-                <div class="subtitle" style="margin:0 0 6px;">本月總損益</div>
-                <div id="kpiThisMonth" style="font-weight:800; font-size:22px;">—</div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="card" style="margin:0;">
-                <div class="subtitle" style="margin:0 0 6px;">已繳管理費</div>
-                <div id="kpiMgmtPaid" style="font-weight:800; font-size:22px;">—</div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="card" style="margin:0;">
-                <div class="subtitle" style="margin:0 0 6px;">累積水電費</div>
-                <div id="kpiUtilitiesSum" style="font-weight:800; font-size:22px;">—</div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="card" style="margin:0;">
-                <div class="subtitle" style="margin:0 0 6px;">設備費用</div>
-                <div id="kpiEquipment" style="font-weight:800; font-size:22px;">—</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 類別支出組成（自動收集所有「支出」類別，排除：收入 / 中信自動扣） -->
-        <div class="card">
-          <h3 class="subtitle" style="margin:0 0 8px;">支出組成</h3>
-          <!-- dynamic stacked bar：JS 會把各類別的比例注入到 catbar-track 內的 segment -->
-          <div id="catbar" class="catbar" style="display:flex; align-items:center; gap:10px;">
-            <div id="catbar-track" class="catbar-track" style="flex:1 1 auto; height:14px; border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;">
-              <!-- JS inject: <span class="seg" style="position:absolute;left:0;width:25%;top:0;bottom:0;background:var(--tint);"></span> ... -->
-            </div>
-            <div id="catbar-total" class="catbar-total" style="min-width:80px; text-align:right; font-weight:700;">—</div>
-          </div>
-          <!-- legend：由 JS 自動生成；每個項目是一個圓點 + 類別名 + 金額 -->
-          <div id="catlegend" class="catlegend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">
-            <!-- JS inject: <span class="legend-item"><i class="dot" style="background:#abc;"></i> 房貸 12,345</span> ... -->
-          </div>
-          <div class="subtitle" style="margin-top:8px; color:var(--muted); font-size:12px;">* 自動排除：收入、中信自動扣；僅統計支出類別</div>
         </div>
       </section>
 
@@ -315,5 +314,37 @@
       <?!= include('form_link'); ?>
     </main>
 <?!= include('form_js'); ?>
+
+  <!-- 手機底部 Tabbar（icon 版） -->
+  <nav class="tabbar" role="tablist" aria-label="底部導覽">
+    <div class="tab-inner">
+      <a href="#info" class="tab-item" data-nav="info">
+        <span class="micon" aria-hidden="true">home</span>
+        <span class="tab-label">資訊</span>
+      </a>
+      <a href="#home" class="tab-item" data-nav="home">
+        <span class="micon" aria-hidden="true">receipt_long</span>
+        <span class="tab-label">記帳</span>
+      </a>
+      <a href="#insights" class="tab-item" data-nav="insights">
+        <span class="micon" aria-hidden="true">insights</span>
+        <span class="tab-label">分析</span>
+      </a>
+      <button type="button" id="tabMenu" class="tab-item" data-nav="menu">
+        <span class="micon" aria-hidden="true">menu</span>
+        <span class="tab-label">選單</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Menu 子選單（預留結構；之後用 JS 控制開關） -->
+  <div id="menuSheet" class="menu-sheet" aria-hidden="true">
+    <div class="menu-grid">
+      <button class="menu-btn" data-nav="code" type="button" title="程式">
+        <span class="micon" aria-hidden="true">code</span>
+      </button>
+      <!-- 之後可在此新增其他子選單項目 -->
+    </div>
+  </div>
 </body>
 </html>
