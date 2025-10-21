@@ -1,0 +1,116 @@
+<!-- Page: Code（常用指令 / 自訂指令） -->
+<section id="page-code" class="wrap" hidden>
+  <div class="card">
+    <h3 class="subtitle" style="margin:0 0 8px;">工具指令</h3>
+    <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; align-items:start;">
+
+      <!-- 主卡 1：GitHub 相關 -->
+      <div class="card" style="margin:0; min-height:320px; display:flex; flex-direction:column;">
+        <div>
+          <div class="subtitle" style="margin:0 0 6px;">GitHub 管理</div>
+          <div style="display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">把本機改動備份到 GitHub</div>
+        </div>
+        <div style="margin-top:10px; overflow:auto; flex:1 1 auto; display:grid; gap:10px;">
+          <div class="card" style="margin:0;">
+            <div class="subtitle" style="margin:0 0 6px;">Git Backup</div>
+            <div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">一般備份流程</div>
+            <pre class="codebox"><code id="cmd-git-backup">git add .
+git commit -m "update"
+git push</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-git-backup">複製</button>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="subtitle" style="margin:0 0 6px;">首次綁定 upstream（一次性）</div>
+            <div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">第一次 push 到遠端時使用</div>
+            <pre class="codebox"><code id="cmd-git-upstream">git push -u origin main</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-git-upstream">複製</button>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="subtitle" style="margin:0 0 6px;">從遠端拉回／復原</div>
+            <div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">對齊遠端；遇到亂流可用 reset</div>
+            <pre class="codebox"><code id="cmd-git-rebase">git fetch origin
+git pull --rebase origin main --allow-unrelated-histories</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-git-rebase">複製</button>
+            <pre class="codebox" style="margin-top:10px;"><code id="cmd-git-reset">git fetch origin
+git reset --hard origin/main</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-git-reset">複製</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主卡 2：Apps Script 相關 -->
+      <div class="card" style="margin:0; min-height:320px; display:flex; flex-direction:column;">
+        <div>
+          <div class="subtitle" style="margin:0 0 6px;">Apps Script 發佈</div>
+          <div style="display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">把檔案推到 Apps Script，並發佈新版 Web App</div>
+        </div>
+        <div style="margin-top:10px; overflow:auto; flex:1 1 auto; display:grid; gap:10px;">
+          <div class="card" style="margin:0;">
+            <div class="subtitle" style="margin:0 0 6px;">Clasp Push</div>
+            <div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">同步本機到 Apps Script</div>
+            <pre class="codebox"><code id="cmd-clasp-push">npx @google/clasp push</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-clasp-push">複製</button>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="subtitle" style="margin:0 0 6px;">Clasp Deploy</div>
+            <div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">發布新版本</div>
+            <pre class="codebox"><code id="cmd-clasp-deploy">npx @google/clasp deploy --description "deploy"</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-clasp-deploy">複製</button>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="subtitle" style="margin:0 0 6px;">Clasp Status / Open</div>
+            <div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">查看差異 / 開啟專案</div>
+            <pre class="codebox"><code id="cmd-clasp-status">npx @google/clasp status</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-clasp-status">複製</button>
+            <pre class="codebox" style="margin-top:10px;"><code id="cmd-clasp-open">npx @google/clasp open</code></pre>
+            <button class="btn" type="button" data-copy="#cmd-clasp-open">複製</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主卡 3：自訂指令 -->
+      <div class="card" style="margin:0; min-height:320px; display:flex; flex-direction:column;">
+        <div>
+          <div class="subtitle" style="margin:0 0 6px;">自訂指令</div>
+          <div style="display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">新增、保存你常用的指令</div>
+        </div>
+
+        <!-- 自訂清單（可滾動） -->
+        <div id="customCmdList" style="margin-top:10px; overflow:auto; flex:1 1 auto; display:grid; gap:10px;">
+          <div id="customEmpty" class="subtitle" style="margin:0; color:var(--muted);">目前尚無自訂指令</div>
+          <!-- 這裡之後由 JS 插入自訂指令卡片（結構同上） -->
+        </div>
+
+        <!-- 新增按鈕 -->
+        <div style="margin-top:12px;">
+          <button id="btnAddCmd" class="btn" type="button">＋ 新增指令</button>
+        </div>
+
+        <!-- 新增表單（先隱藏，之後用 JS 控制顯示與送出） -->
+        <div id="cmdForm" class="card" hidden style="margin-top:10px;">
+          <div class="row" style="gap:10px;">
+            <div class="col">
+              <label>標題</label>
+              <input id="cmdTitle" type="text" placeholder="例如：重設到遠端" />
+            </div>
+            <div class="col">
+              <label>說明</label>
+              <input id="cmdNote" type="text" placeholder="一句話用途說明" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <div class="col">
+              <label>指令</label>
+              <textarea id="cmdBody" style="width:100%; height:120px; border-radius:12px; padding:12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;" placeholder="支援多行，例如：\n git fetch origin\n git reset --hard origin/main"></textarea>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:10px; display:flex; gap:8px;">
+            <button id="cmdSubmit" class="btn" type="button">加入</button>
+            <button id="cmdCancel" class="btn ghost" type="button">取消</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

@@ -1,6 +1,5 @@
-
 /** ================== 基本設定 ================== */
-const SHEET_CFG = {
+var SHEET_CFG = {
   spreadsheetId: '1qgECWIRQvcYCIpzhpHc2RJDfgfj-PT0Ba8oxQYkEreg', // 你的 Google Sheet ID
   sheetName: 'collected',                                       // 分頁名稱
   headerRow: 1,                                                 // 標題列（資料從下一列開始）
@@ -9,25 +8,25 @@ const SHEET_CFG = {
 
 /** ================== 路由 ================== */
 function doGet() {
-  const t = HtmlService.createTemplateFromFile('form');
-  // 讓 <?= DEPLOY_TAG ?> 有值（沒給會報 ReferenceError）
-  t.DEPLOY_TAG = (new Date()).toISOString().slice(0,10);
+  var t = HtmlService.createTemplateFromFile('form'); // 這個檔名要和你的主頁 form.html 對上
+  t.DEPLOY_TAG = new Date().toISOString();           // 給你頁面裡的 <?= DEPLOY_TAG ?> 用
   return t.evaluate()
     .setTitle('碧柳記帳冊 v10')
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /** ================== 打開 Sheet ================== */
-function _sheet() {
-  const ss = SpreadsheetApp.openById(SHEET_CFG.spreadsheetId);
-  const sh = ss.getSheetByName(SHEET_CFG.sheetName);
-  if (!sh) throw new Error('找不到分頁：' + SHEET_CFG.sheetName);
+function _sheet(){
+  var ss = SpreadsheetApp.openById(SHEET_CFG.spreadsheetId);
+  var sh = ss.getSheetByName(SHEET_CFG.sheetName);
+  if (!sh) throw new Error('找不到工作表：' + SHEET_CFG.sheetName);
   return sh;
 }
 
 /** ================== 服務 ================== */
 function svcInfo() {
-  const sh = _sheet();
+  var sh = _sheet();
   return {
     ok: true,
     version: 'v10',
@@ -40,21 +39,21 @@ function svcInfo() {
 
 /** 下拉選單來源（類別 / 付款人） */
 function readOptions() {
-  const sh = _sheet();
-  const lr = sh.getLastRow();
+  var sh = _sheet();
+  var lr = sh.getLastRow();
   if (lr <= SHEET_CFG.headerRow) return { categories: [], payers: [] };
 
-  const start = SHEET_CFG.headerRow + 1;
-  const rows  = lr - SHEET_CFG.headerRow;
-  const rawCat = sh.getRange(start, SHEET_CFG.COL.CAT, rows, 1).getValues();
-  const rawPay = sh.getRange(start, SHEET_CFG.COL.PAYER, rows, 1).getValues();
+  var start = SHEET_CFG.headerRow + 1;
+  var rows  = lr - SHEET_CFG.headerRow;
+  var rawCat = sh.getRange(start, SHEET_CFG.COL.CAT, rows, 1).getValues();
+  var rawPay = sh.getRange(start, SHEET_CFG.COL.PAYER, rows, 1).getValues();
 
-  const catSet = {};
+  var catSet = {};
   for (var i=0;i<rawCat.length;i++) {
     var v = (rawCat[i][0] || '').toString().trim();
     if (v) catSet[v] = true;
   }
-  const paySet = {};
+  var paySet = {};
   for (var j=0;j<rawPay.length;j++) {
     var p = (rawPay[j][0] || '').toString().trim();
     if (p) paySet[p] = true;
@@ -67,8 +66,8 @@ function readOptions() {
 
 /** 新增一筆資料（表單） */
 function writeEntry(payload) {
-  const row = _normalize(payload);
-  const sh  = _sheet();
+  var row = _normalize(payload);
+  var sh  = _sheet();
   sh.appendRow(row);
   SpreadsheetApp.flush(); // 確保立即寫入
   return { ok: true, lastRow: sh.getLastRow() };
@@ -76,18 +75,18 @@ function writeEntry(payload) {
 
 /** KPI：總收入 / 總支出 / 目前餘額 */
 function readTotals() {
-  const sh = _sheet();
-  const lr = sh.getLastRow();
+  var sh = _sheet();
+  var lr = sh.getLastRow();
   if (lr <= SHEET_CFG.headerRow) return { totalIncome:0, totalExpense:0, balance:0 };
 
-  const start = SHEET_CFG.headerRow + 1;
-  const rows  = lr - SHEET_CFG.headerRow;
-  const amt = sh.getRange(start, SHEET_CFG.COL.AMT,  rows, 1).getValues();
-  const typ = sh.getRange(start, SHEET_CFG.COL.TYPE, rows, 1).getValues();
+  var start = SHEET_CFG.headerRow + 1;
+  var rows  = lr - SHEET_CFG.headerRow;
+  var amt = sh.getRange(start, SHEET_CFG.COL.AMT,  rows, 1).getValues();
+  var typ = sh.getRange(start, SHEET_CFG.COL.TYPE, rows, 1).getValues();
 
   var inc = 0, exp = 0;
   for (var i=0;i<rows;i++) {
-    var n = Number(String((amt[i][0] === null || amt[i][0] === undefined) ? '' : amt[i][0]).toString().replace(/,/g,'').trim());
+    var n = _num(amt[i][0]);
     if (isNaN(n)) n = 0;
     var t = (typ[i][0] || '').toString().trim();
     if (t === '收入') inc += n;
@@ -95,63 +94,123 @@ function readTotals() {
   }
   return { totalIncome: inc, totalExpense: exp, balance: inc - exp };
 }
+/** ================== 程式頁：自訂指令（儲存於試算表 code 分頁） ================== */
+function _codeSheet_(){
+  var ss = SpreadsheetApp.openById(SHEET_CFG.spreadsheetId);
+  var sh = ss.getSheetByName('code');
+  if (!sh){
+    sh = ss.insertSheet('code');
+  }
+  // 確保表頭
+  if (sh.getLastRow() === 0){
+    sh.getRange(1,1,1,4).setValues([["時間","標題","說明","指令"]]);
+  } else {
+    var headerRow = sh.getRange(1,1,1,4).getValues();
+    var emptyHead = true;
+    for (var i=0;i<4;i++){ if (String(headerRow[0][i]||'').trim() !== '') { emptyHead=false; break; } }
+    if (emptyHead) sh.getRange(1,1,1,4).setValues([["時間","標題","說明","指令"]]);
+  }
+  return sh;
+}
+
+function listCommands(){
+  var sh = _codeSheet_();
+  var lr = sh.getLastRow();
+  if (lr <= 1) return [];
+  var values = sh.getRange(2,1,lr-1,4).getValues();
+  var out = [];
+  for (var i=0;i<values.length;i++){
+    out.push({
+      title: String(values[i][1] || '').trim(),
+      note:  String(values[i][2] || '').trim(),
+      body:  String(values[i][3] || '').trim()
+    });
+  }
+  return out;
+}
+
+function addCommand(obj){
+  if (!obj) throw new Error('缺少參數');
+  var title = String(obj.title || '').trim();
+  var note  = String(obj.note  || '').trim();
+  var body  = String(obj.body  || '').trim();
+  if (!title) throw new Error('標題不可空白');
+  if (!body)  throw new Error('指令不可空白');
+  if (title.length > 100) title = title.slice(0,100);
+  if (note.length  > 200) note  = note.slice(0,200);
+  if (body.length  > 4000) body = body.slice(0,4000);
+
+  var sh = _codeSheet_();
+  sh.appendRow([new Date(), title, note, body]);
+  SpreadsheetApp.flush();
+  return { ok:true };
+}
 
 /** 分析頁：詳細清單（最新 N 筆，預設 1000）— 以字串為主，避免型別踩雷 */
 function readRowsLatest(limit) {
   limit = Math.max(1, Math.min(1000, Number(limit || 1000)));
 
-  const sh = _sheet();
-  const lr = sh.getLastRow();
+  var sh = _sheet();
+  var lr = sh.getLastRow();
   if (lr <= SHEET_CFG.headerRow) return { total: 0, rows: [] };
 
-  const start = SHEET_CFG.headerRow + 1;
-  const rowsN = lr - SHEET_CFG.headerRow;
+  var start = SHEET_CFG.headerRow + 1;
+  var rowsN = lr - SHEET_CFG.headerRow;
 
   // 用 displayValues：全部以「字串」讀出（含日期、金額）
-  const rng = sh.getRange(start, 1, rowsN, 6).getDisplayValues(); // A..F 皆為 string
-  const tz = Session.getScriptTimeZone() || 'Asia/Taipei';
+  var rng = sh.getRange(start, 1, rowsN, 6).getDisplayValues(); // A..F 皆為 string
+  var tz = Session.getScriptTimeZone() || 'Asia/Taipei';
 
   // 轉成統一的物件陣列；dateStr 就用表內顯示字串，amount 先保留字串，給前端轉數字
-  const all = rng.map(a => ({
-    dateStr: String(a[0] || '').trim(),   // 例如 2025/7/18 或 2025-07-18
-    title:   String(a[1] || '').trim(),
-    category:String(a[2] || '').trim(),
-    amount:  String(a[3] || '').trim(),   // 可能含千分位
-    type:    String(a[4] || '').trim(),
-    payer:   String(a[5] || '').trim()
-  }));
+  var all = rng.map(function(a){
+    return {
+      dateStr: String(a[0] || '').trim(),   // 例如 2025/7/18 或 2025-07-18
+      title:   String(a[1] || '').trim(),
+      category:String(a[2] || '').trim(),
+      amount:  String(a[3] || '').trim(),   // 可能含千分位
+      type:    String(a[4] || '').trim(),
+      payer:   String(a[5] || '').trim()
+    };
+  });
 
   // 依日期字串嘗試轉為可比較的時間戳，排 DESC；無法解析放最下面
   function toEpoch(s){
     // 支援 yyyy/MM/dd 或 yyyy-MM-dd
-    const m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+    var m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
     if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3])).getTime();
-    const d = new Date(s); return isNaN(d) ? -1 : d.getTime();
+    var d = new Date(s); return isNaN(d) ? -1 : d.getTime();
   }
-  all.sort((a,b) => toEpoch(b.dateStr) - toEpoch(a.dateStr));
+  all.sort(function(a,b){ return toEpoch(b.dateStr) - toEpoch(a.dateStr); });
 
   // 取前 N 筆
-  const slice = all.slice(0, limit);
+  var slice = all.slice(0, limit);
 
   return { total: all.length, rows: slice };
 }
 
 /** （可選）極小除錯：最後列數 + 樣本 */
 function readRowsCount(){
-  const sh = _sheet();
-  const lr = sh.getLastRow();
-  const n  = Math.max(0, lr - SHEET_CFG.headerRow);
-  const sample = n > 0 ? sh.getRange(SHEET_CFG.headerRow + 1, 1, Math.min(3, n), 6).getValues() : [];
+  var sh = _sheet();
+  var lr = sh.getLastRow();
+  var n  = Math.max(0, lr - SHEET_CFG.headerRow);
+  var sample = n > 0 ? sh.getRange(SHEET_CFG.headerRow + 1, 1, Math.min(3, n), 6).getValues() : [];
   return { ok:true, lastRow: lr, dataRows: n, sample: sample };
 }
 
 /** ================== 私有工具 ================== */
+function _num(v){
+  var s = (v === undefined || v === null) ? '' : String(v);
+  s = s.replace(/,/g,'').trim();
+  var n = Number(s);
+  return isNaN(n) ? 0 : n;
+}
+
 function _parseDate_(raw){
   if (raw instanceof Date) return raw;
-  const s = String(raw || '').trim();
-  const m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+  var s = String(raw || '').trim();
+  var m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
   if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
-  const d = new Date(s);
+  var d = new Date(s);
   return isNaN(d) ? new Date() : d;
 }
 
@@ -172,7 +231,7 @@ function _normalize(p) {
 
   // 金額
   var amount = (function(raw){
-    var n = Number(String((raw === null || raw === undefined) ? '' : raw).replace(/,/g,'').trim());
+    var n = _num(raw);
     if (!isFinite(n) || n <= 0) throw new Error('金額需為大於 0 的數字');
     return Math.round(n);
   })(p.amount);
@@ -198,16 +257,16 @@ function _normalize(p) {
 function readLogoUrl() {
   // 讀取 collected!J2：可填入直接的圖片網址，或 dataURL
   // 範例假設是網址
-  const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName('collected');
-  const v = sh.getRange('J2').getValue();
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName('collected');
+  var v = sh.getRange('J2').getValue();
   // 回傳 {url:"..."} 或 {dataUrl:"..."} 皆可
   return { url: String(v) };
 }
 
 function getLogoUrl() {
-  const sh = SpreadsheetApp.openById(SHEET_CFG.spreadsheetId).getSheetByName("collected");
-  const url = sh.getRange("J2").getValue();
+  var sh = SpreadsheetApp.openById(SHEET_CFG.spreadsheetId).getSheetByName("collected");
+  var url = sh.getRange("J2").getValue();
   return { url: url };
 }
 
@@ -246,7 +305,6 @@ function readLoanProgress(total) {
   };
 }
 
-// 讓 <?!= include('xxx'); ?> 可用
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }

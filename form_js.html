@@ -1,7 +1,29 @@
 <script>
+
 (function(){
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // ---- 通用：點擊 data-copy 複製指定節點的文字 ----
+  function bindCopyDelegation(){
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      var sel = btn.getAttribute('data-copy');
+      var el  = sel ? document.querySelector(sel) : null;
+      if (!el) return;
+      var txt = (el.textContent || '').trim();
+      if (!txt) return;
+      (navigator.clipboard && navigator.clipboard.writeText
+        ? navigator.clipboard.writeText(txt)
+        : (function(){ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); return Promise.resolve(); })()
+      ).then(function(){
+        var old = btn.textContent; btn.textContent = '已複製';
+        setTimeout(function(){ btn.textContent = old || '複製'; }, 900);
+      }).catch(function(){});
+    });
+  }
+  bindCopyDelegation();
 
 // ---- 日期顯示：把 input 的值轉成 MM/DD 顯示在相鄰 .date-display ----
 function bindShortDate(inpId, dispId){
@@ -217,6 +239,74 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   let filteredRows = [];
   let sortState = { key:'date', dir:'desc' };
   let chartFeatured, chartOthers;
+
+  // ===== 程式頁（#page-code）：自訂指令 =====
+  var codePageBooted = false;
+  var customSeq = 0;
+  function renderCustomCommands(list){
+    var wrap = document.getElementById('customCmdList');
+    var empty = document.getElementById('customEmpty');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!Array.isArray(list) || list.length === 0){
+      if (empty) empty.hidden = false;
+      return;
+    }
+    if (empty) empty.hidden = true;
+    list.forEach(function(item){
+      var id = 'cmd-custom-' + (++customSeq);
+      var title = (item && item.title) ? String(item.title) : '未命名指令';
+      var note  = (item && item.note)  ? String(item.note)  : '';
+      var body  = (item && item.body)  ? String(item.body)  : '';
+      var card = document.createElement('div');
+      card.className = 'card'; card.style.margin = '0';
+      card.innerHTML = ''+
+        '<div class="subtitle" style="margin:0 0 6px;">'+ escapeHtml(title) +'</div>'+
+        (note ? '<div style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted); background:color-mix(in oklab, var(--muted) 14%, transparent);">'+ escapeHtml(note) +'</div>' : '')+
+        '<pre class="codebox" style="margin-top:10px;"><code id="'+ id +'">'+ escapeHtml(body) +'</code></pre>'+
+        '<button class="btn" type="button" data-copy="#'+ id +'">複製</button>';
+      wrap.appendChild(card);
+    });
+  }
+
+  function fetchCustomCommands(){
+    if (!document.getElementById('customCmdList')) return;
+    google.script.run
+      .withSuccessHandler(function(res){ renderCustomCommands(res || []); })
+      .withFailureHandler(function(err){ console.warn('listCommands fail:', err && err.message || err); })
+      .listCommands();
+  }
+
+  function initCodePage(){
+    if (codePageBooted) return;
+    codePageBooted = true;
+    var addBtn   = document.getElementById('btnAddCmd');
+    var formWrap = document.getElementById('cmdForm');
+    var tInput   = document.getElementById('cmdTitle');
+    var nInput   = document.getElementById('cmdNote');
+    var bInput   = document.getElementById('cmdBody');
+    var okBtn    = document.getElementById('cmdSubmit');
+    var cancelBtn= document.getElementById('cmdCancel');
+
+    function openForm(){ if (formWrap) formWrap.hidden = false; }
+    function closeForm(){ if (formWrap) formWrap.hidden = true; if (tInput) tInput.value=''; if (nInput) nInput.value=''; if (bInput) bInput.value=''; }
+
+    if (addBtn)   addBtn.addEventListener('click', openForm);
+    if (cancelBtn)cancelBtn.addEventListener('click', closeForm);
+    if (okBtn) okBtn.addEventListener('click', function(){
+      var title = (tInput && tInput.value || '').trim();
+      var note  = (nInput && nInput.value || '').trim();
+      var body  = (bInput && bInput.value || '').trim();
+      if (!title || !body){ alert('請輸入「標題」與「指令」'); return; }
+      okBtn.disabled = true;
+      google.script.run
+        .withSuccessHandler(function(){ okBtn.disabled = false; closeForm(); fetchCustomCommands(); })
+        .withFailureHandler(function(err){ okBtn.disabled = false; alert('新增失敗：' + (err && err.message || err)); })
+        .addCommand({ title: title, note: note, body: body });
+    });
+
+    fetchCustomCommands();
+  }
 
   // 左側 sort 抽屜
   const fltToggle    = document.getElementById('fltToggle');
@@ -483,23 +573,22 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
   // ===== 路由 + 分頁名稱 =====
   const pageNameEl = document.getElementById('pageName');
-  const pageNames  = { info:'資訊', home:'記帳', insights:'分析', links:'連結' };
+  const pageNames  = { info:'資訊', home:'記帳', insights:'分析', code:'程式' };
 
   function showPage(name){
     $('#page-info').hidden     = (name !== 'info');
     $('#page-home').hidden     = (name !== 'home');
     $('#page-insights').hidden = (name !== 'insights');
-    const pageLinks = document.getElementById('page-links');
-    if (pageLinks) pageLinks.hidden = (name !== 'links');
+    $('#page-code').hidden     = (name !== 'code');
     $$('.sb-link').forEach(b=> b.classList.toggle('active', b.dataset.nav === name));
     pageNameEl.textContent = pageNames[name] || '';
     if (name === 'insights') { setDrawer(false); loadRows(); }
     if (name === 'info')     { loadInfo(); }
+    if (name === 'code')     { initCodePage(); }
   }
   function applyHash(){
     const h = (location.hash || '#info').replace('#','');
-    const ok = ['info','home','insights','links'];
-    showPage(ok.includes(h) ? h : 'info');
+    showPage(['info','home','insights','code'].includes(h) ? h : 'info');
   }
   window.addEventListener('hashchange', applyHash);
   applyHash();
