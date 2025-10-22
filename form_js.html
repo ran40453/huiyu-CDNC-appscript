@@ -3,6 +3,10 @@
 (function(){
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
+    // 依類別推斷的型別（收入/支出/中性）
+  const categoryTypeMap = Object.create(null);
+  let allCategoriesRaw = [];
+  let CURRENT_BALANCE_ALL = 0;
 
   // ---- 通用：點擊 data-copy 複製指定節點的文字 ----
   function bindCopyDelegation(){
@@ -173,6 +177,8 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   const today = new Date();
   const iso = new Date(today.getTime() - today.getTimezoneOffset()*60000).toISOString().slice(0,10);
   if (f) f.date.value = iso;
+  // 當收入/支出/中性切換時，依型別過濾「項目類別」下拉
+  document.querySelectorAll('input[name="type"]').forEach(function(r){ r.addEventListener('change', filterCategoryOptionsByType); });
   function tip(text){ if (!msg) return; msg.textContent = text||''; if (text) setTimeout(()=> msg.textContent='', 2500); }
   function fmt(n){ return (Number(n||0)).toLocaleString(); }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -180,17 +186,68 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   function loadOptions(){
     google.script.run
       .withSuccessHandler(opt=>{
-        if (selCat)  fillSelect(selCat,  (opt && opt.categories) || []);
-        if (selPayer)fillSelect(selPayer,(opt && opt.payers)    || []);
+        allCategoriesRaw = (opt && opt.categories) || [];
+        if (selPayer) fillSelect(selPayer, (opt && opt.payers) || []);
+        filterCategoryOptionsByType();
       })
       .withFailureHandler(err=> console.warn('readOptions fail:', err && err.message))
       .readOptions();
   }
   function fillSelect(sel, arr){
     sel.innerHTML = `<option value="" disabled selected>請選擇</option>` +
-      arr.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      arr.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('') +
+      `<option value="__ADD__">＋ 新增類別…</option>`;
+  }
+
+  function filterCategoryOptionsByType(){
+    if (!selCat) return;
+    const checked = document.querySelector('input[name="type"]:checked');
+    const t = checked ? checked.value : '支出';
+    const cur = selCat.value;
+    let arr = (t === '中性')
+      ? (Array.isArray(allCategoriesRaw) ? allCategoriesRaw.slice() : [])
+      : (Array.isArray(allCategoriesRaw) ? allCategoriesRaw.filter(function(c){
+          const m = categoryTypeMap[c];
+          return (m == null) || (m === t);
+        }) : []);
+    // 若過濾後為空，退回全清單，避免下拉變成無選項
+    if ((!arr || arr.length === 0) && Array.isArray(allCategoriesRaw) && allCategoriesRaw.length){
+      arr = allCategoriesRaw.slice();
+    }
+    fillSelect(selCat, arr);
+    // 若原先選項仍存在，保留選取
+    if (cur && Array.from(selCat.options).some(o=>o.value===cur)) selCat.value = cur;
   }
   loadOptions();
+
+  // 類別下拉的「＋ 新增類別…」行為
+  (function enableAddCategory(){
+    var selCat = document.getElementById('category');
+    if (!selCat) return;
+    selCat.addEventListener('change', function(){
+      if (this.value !== '__ADD__') return;
+      var ioSel = document.querySelector('input[name="type"]:checked');
+      var seed  = ioSel ? ioSel.value : '支出'; // 收入 / 支出 / 中性
+      var name = (prompt('輸入新類別名稱：如「租金收入」或「補助/退稅」') || '').trim();
+      if ([...this.options].some(o=>o.value===name)){
+        this.value = name;
+        return;
+      }
+      if (!name) { this.value = ''; return; }
+      // 前端即時插入並選中
+      var addOpt = document.createElement('option');
+      addOpt.value = name; addOpt.textContent = name;
+      this.insertBefore(addOpt, this.querySelector('option[value="__ADD__"]'));
+      this.value = name;
+      // 後端持久化（不建立新分頁，存在屬性中）
+      google.script.run
+        .withFailureHandler(function(err){ alert('新增類別失敗：' + (err && err.message || err)); })
+        .addCategory({ name: name, ioType: seed });
+    });
+  })();
+  // 排除清單（類別名稱）與「不計損益」型別
+  const EXCLUDE_CATS  = new Set(['收入','中信自動扣']);
+  const EXCLUDE_TYPES = new Set(['中性']);
 
   if (f){
     f.addEventListener('submit', (e)=>{
@@ -220,7 +277,37 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
     $('#inkBalance').textContent = fmt(d.balance);
   }
   function refreshTotals(){
-    google.script.run.withSuccessHandler(renderKpis).readTotals();
+    google.script.run
+      .withSuccessHandler(function(res){
+        const raw = Array.isArray(res && res.rows) ? res.rows : [];
+        const rows = raw.map(function(r){
+          const amt = Number(String(r.amount||'').replace(/,/g,'').trim()) || 0;
+          const tit = String(r.title||'').trim();
+          const typ = String(r.type||'').trim();
+          return { amount: amt, title: tit, type: typ };
+        });
+        // 規則：
+        // 1) 總收入：所有 type==='收入' 的金額
+        // 2) 總支出：所有 type==='支出'，但排除 項目名稱 === '中性自動扣'
+        // 3) 目前餘額：全部加總（收入加，支出減；不做任何排除）
+        let income = 0, expense = 0, balance = 0;
+        rows.forEach(function(r){
+          if (r.type === '收入'){
+            income += r.amount;
+            balance += r.amount;
+          } else if (r.type === '支出'){
+            if (r.title !== '中性自動扣') expense += r.amount; // KPI 專用排除
+            balance -= r.amount; // 餘額一律扣除
+          }
+        });
+        CURRENT_BALANCE_ALL = balance; // 提供 sumBar 使用
+        const fN = n => Number(n||0).toLocaleString();
+        const EI = document.getElementById('inkIncome');  if (EI) EI.textContent  = fN(income);
+        const EE = document.getElementById('inkExpense'); if (EE) EE.textContent = fN(expense);
+        const EB = document.getElementById('inkBalance'); if (EB) EB.textContent = fN(balance);
+      })
+      .withFailureHandler(function(err){ console.warn('readRowsLatest for totals fail:', err && err.message || err); })
+      .readRowsLatest(50000);
   }
   $('#refreshBtn')?.addEventListener('click', ()=>{ refreshTotals(); loadOptions(); });
   refreshTotals();
@@ -328,6 +415,23 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
             if (!(d instanceof Date) || isNaN(d)) d = new Date(0);
             return { title:r.title, category:r.category, amount:amt, type:r.type, payer:r.payer, dateStr:r.dateStr, __date:d };
           });
+                    // 建立「類別 -> 主要型別」的映射（用於篩選與預設）
+          (function buildCategoryTypeMap(){
+            const count = Object.create(null); // key: cat + '|' + type => 次數
+            rows.forEach(function(r){
+              const cat = (r.category||'').trim(); const t = (r.type||'').trim();
+              if (!cat || !t) return;
+              const key = cat + '|' + t;
+              count[key] = (count[key]||0) + 1;
+            });
+            const seenCats = new Set();
+            Object.keys(count).forEach(function(key){ seenCats.add(key.split('|')[0]); });
+            seenCats.forEach(function(cat){
+              let bestT=null, bestN=-1;
+              ['收入','支出','中性'].forEach(function(t){ const n = count[cat+'|'+t]||0; if (n>bestN){ bestN=n; bestT=t; } });
+              if (bestT) categoryTypeMap[cat]=bestT;
+            });
+          })();
           renderInfoKPIs(rows);
           renderInfoCatbar(rows);
         })
@@ -361,8 +465,8 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   function renderInfoKPIs(rows){
     var mr = monthRange(new Date());
     var inMonth = rows.filter(function(r){ var d = r.__date; return isInMonth(d, mr); });
-    var incThis = numberSum(inMonth.filter(function(r){ return r.type==='收入'; }).map(function(r){ return r.amount; }));
-    var expThis = numberSum(inMonth.filter(function(r){ return r.type==='支出'; }).map(function(r){ return r.amount; }));
+    var incThis = numberSum(inMonth.filter(function(r){ return r.type==='收入' && !EXCLUDE_TYPES.has(r.type); }).map(function(r){ return r.amount; }));
+    var expThis = numberSum(inMonth.filter(function(r){ return r.type==='支出' && !EXCLUDE_TYPES.has(r.type); }).map(function(r){ return r.amount; }));
     var netThis = incThis - expThis;
     var mgmtPaid = numberSum(inMonth.filter(function(r){ return (r.type==='支出') && /管理費/.test(String(r.category||'')); }).map(function(r){ return r.amount; }));
     var utilSum  = numberSum(rows.filter(function(r){ return (r.type==='支出') && /水電/.test(String(r.category||'')); }).map(function(r){ return r.amount; }));
@@ -386,9 +490,9 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
     var catMap = new Map();
     var total = 0;
     rows.forEach(function(r){
-      if (r.type !== '支出') return;
+      if (r.type !== '支出') return;           // 僅統計支出
       var cat = String(r.category||'').trim();
-      if (cat === '收入' || cat === '中信自動扣') return; // 排除
+      if (EXCLUDE_CATS.has(cat)) return;       // 排除特別指定的類別
       var n = Number(r.amount||0) || 0; if (n<=0) return;
       total += n; var cur = catMap.get(cat)||0; catMap.set(cat, cur+n);
     });
@@ -503,12 +607,11 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
   function setDrawer(open){
     if (!fltDrawer || !fltToggle || !pageInsights) return;
-    const willOpen = !!open;
-    fltDrawer.classList.toggle('open', willOpen);
-    fltDrawer.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
-    pageInsights.classList.toggle('flt-shift', willOpen);
-    fltToggle.style.left = willOpen ? `calc(var(--flt-w) + 6px)` : '6px';
-    fltToggle.innerHTML  = willOpen ? '⇤' : '⇥ <small>sort</small>';
+    fltDrawer.classList.add('open');
+    fltDrawer.setAttribute('aria-hidden','false');
+    pageInsights.classList.add('flt-shift');
+    fltToggle.style.display = 'none';
+    fltDrawer.classList.add('card','flt-fixed');
   }
   fltToggle?.addEventListener('click', ()=> setDrawer(!fltDrawer.classList.contains('open')));
 
@@ -520,7 +623,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   const chipsPayer= document.getElementById('chipsPayer');
 
   const DEFAULT_CATS = new Set(['房貸','水電費','設備']);
-  let selectedTypes  = new Set(['收入','支出']);
+  let selectedTypes  = new Set(['收入','支出','中性']);
   let selectedCats   = new Set(DEFAULT_CATS);
   let selectedPayers = new Set();
 
@@ -550,14 +653,28 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
     selectedPayers = new Set(payers);
     payers.forEach(p=> chipsPayer.appendChild(makeChip(p, true)));
 
+    // 確保「中性」按鈕存在
+    if (!segType.querySelector('[data-type="中性"]')){
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'segbtn active'; b.dataset.type = '中性'; b.textContent = '中性';
+      segType.appendChild(b);
+    }
+    
     // 收入/支出（可複選）
     segType.querySelectorAll('.segbtn').forEach(btn=>{
       btn.onclick = ()=>{
-        const v = btn.dataset.type;
+        const v = btn.dataset.type; // 收入 / 支出 / 中性
         btn.classList.toggle('active');
-        if (btn.classList.contains('active')) selectedTypes.add(v);
-        else selectedTypes.delete(v);
+        const nowOn = btn.classList.contains('active');
+        if (nowOn) selectedTypes.add(v); else selectedTypes.delete(v);
         if (selectedTypes.size === 0){ selectedTypes.add(v); btn.classList.add('active'); }
+        // 類別群組預設：依映射批次開/關
+        const chips = Array.from(document.querySelectorAll('#chipsCat .chip'));
+        chips.forEach(ch=>{
+          const cat = ch.dataset.val;
+          const t = categoryTypeMap[cat];
+          if (t === v){ ch.classList.toggle('active', nowOn); }
+        });
         applyFilters();
       };
     });
@@ -586,7 +703,8 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
         buildChipsFromData(currentRows);
         fltFrom.value = ''; fltTo.value = '';   // 預設「全部」
-        setDrawer(false);                       // 預設收合
+        setDrawer(true);
+        if (fltDrawer){ fltDrawer.style.margin = '0 auto 12px'; fltDrawer.style.maxWidth = '1200px'; }
         applyFilters();
         rowsMsg.textContent = '';
       })
@@ -789,17 +907,16 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 */
 function renderSumBar(){
   const sumTagsBox = document.getElementById('sumTags');
+  const sumRight   = document.querySelector('#sumBar .sum-right');
   const sumTotalEl = document.getElementById('sumTotal');
-  if (!sumTagsBox || !sumTotalEl) return;
+  if (!sumTagsBox || !sumRight || !sumTotalEl) return;
 
-  // 目前「有被選中」的類別（= 左抽屜 chips.active）
+  // 目前「有被選中」的類別（= 左側 chips.active）
   const activeCats = Array.from(document.querySelectorAll('#chipsCat .chip.active'))
     .map(b => b.dataset.val);
-
-  // 如果沒有任何類別被選中，語意上＝全部類別
   const usingAll = activeCats.length === 0;
 
-  // 準備要顯示在左邊的小氣泡們
+  // 左側：已選類別氣泡
   sumTagsBox.innerHTML = '';
   if (usingAll){
     const tag = document.createElement('span');
@@ -813,33 +930,54 @@ function renderSumBar(){
       btn.className = 'sum-tag';
       btn.innerHTML = `<span>${cat}</span><span class="x">×</span>`;
       btn.addEventListener('click', ()=>{
-        // 取消左抽屜對應 chip 的 active
         const chip = Array.from(document.querySelectorAll('#chipsCat .chip'))
           .find(c => c.dataset.val === cat);
         if (chip){ chip.classList.remove('active'); }
-        applyFilters(); // 會順便重畫表格/圖表/加總列
+        applyFilters();
       });
       sumTagsBox.appendChild(btn);
     });
   }
 
-  // 計算加總：在「已套用其他條件」的 filteredRows 裡再根據 activeCats 合計
+  // 右側：改為「項目加總：<sum> ｜ 目前餘額：<balance>」
+  // 先算 sum（以 filteredRows + activeCats 為準）
   let total = 0;
-  // 當使用「全部」時，容許所有類別；否則只算 activeCats 內的
-  const allowSet = usingAll
-    ? null
-    : new Set(activeCats);
-
+  const allowSet = usingAll ? null : new Set(activeCats);
   filteredRows.forEach(r=>{
     const cat = (r.category || '（未分類）').trim();
     if (allowSet && !allowSet.has(cat)) return;
-    // 這裡以「金額相加」為準（不論收入/支出）
-    // 若你要把支出視為負數，改成：const val = (r.type === '支出' ? -1 : 1) * Number(r.amount||0)
-    const val = Number(r.amount || 0);
-    total += val;
+    total += Number(r.amount||0);
   });
 
-  sumTotalEl.textContent = total.toLocaleString();
+  const fN = n => Number(n||0).toLocaleString();
+  // 確保 sum-right 結構含兩個數值區塊
+  sumRight.innerHTML = '';
+
+  const leftBlock = document.createElement('span');
+  leftBlock.className = 'sum-right-block';
+  leftBlock.textContent = '項目加總：';
+  const sumVal = document.createElement('strong');
+  sumVal.id = 'sumTotal';
+  sumVal.textContent = fN(total);
+  leftBlock.appendChild(sumVal);
+
+  const sep = document.createElement('span');
+  sep.className = 'sum-sep';
+  sep.textContent = ' ｜ ';
+
+  const rightBlock = document.createElement('span');
+  rightBlock.className = 'sum-right-block';
+  const label2 = document.createElement('span');
+  label2.textContent = '目前餘額：';
+  const bal = document.createElement('strong');
+  bal.id = 'sumBalanceAll';
+  bal.textContent = fN(CURRENT_BALANCE_ALL);
+  rightBlock.appendChild(label2);
+  rightBlock.appendChild(bal);
+
+  sumRight.appendChild(leftBlock);
+  sumRight.appendChild(sep);
+  sumRight.appendChild(rightBlock);
 }
   
   // 最後再綁一次以防止其他 handler 阻擋（捕獲階段）

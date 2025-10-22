@@ -38,30 +38,32 @@ function svcInfo() {
 }
 
 /** 下拉選單來源（類別 / 付款人） */
-function readOptions() {
+function readOptions(){
   var sh = _sheet();
-  var lr = sh.getLastRow();
-  if (lr <= SHEET_CFG.headerRow) return { categories: [], payers: [] };
-
-  var start = SHEET_CFG.headerRow + 1;
-  var rows  = lr - SHEET_CFG.headerRow;
-  var rawCat = sh.getRange(start, SHEET_CFG.COL.CAT, rows, 1).getValues();
-  var rawPay = sh.getRange(start, SHEET_CFG.COL.PAYER, rows, 1).getValues();
-
-  var catSet = {};
-  for (var i=0;i<rawCat.length;i++) {
-    var v = (rawCat[i][0] || '').toString().trim();
-    if (v) catSet[v] = true;
-  }
-  var paySet = {};
-  for (var j=0;j<rawPay.length;j++) {
-    var p = (rawPay[j][0] || '').toString().trim();
-    if (p) paySet[p] = true;
-  }
-  return {
-    categories: Object.keys(catSet).sort(),
-    payers: Object.keys(paySet).sort()
+  var rng = sh.getDataRange().getValues();
+  var head = rng.shift() || [];
+  var idx = {
+    date: head.indexOf('日期'), title: head.indexOf('項目名稱'), category: head.indexOf('項目類別'),
+    amount: head.indexOf('金額'), type: head.indexOf('收入/支出'), payer: head.indexOf('付款人')
   };
+  var derivedCats = {};
+  var payers = {};
+  rng.forEach(function(row){
+    var cat = (row[idx.category]||'').toString().trim();
+    var py  = (row[idx.payer]||'').toString().trim();
+    if (cat) derivedCats[cat] = true;
+    if (py)  payers[py] = true;
+  });
+
+  // Script Properties 中的類別，與資料中出現過的類別合併
+  var stored = _getCategories(); // [{name, ioType}]
+  var catSet = {};
+  stored.forEach(function(it){ if (it && it.name) catSet[it.name] = true; });
+  Object.keys(derivedCats).forEach(function(k){ catSet[k] = true; });
+
+  var categories = Object.keys(catSet).sort();
+  var payList    = Object.keys(payers).sort();
+  return { categories: categories, payers: payList };
 }
 
 /** 新增一筆資料（表單） */
@@ -74,24 +76,21 @@ function writeEntry(payload) {
 }
 
 /** KPI：總收入 / 總支出 / 目前餘額 */
-function readTotals() {
+function readTotals(){
   var sh = _sheet();
-  var lr = sh.getLastRow();
-  if (lr <= SHEET_CFG.headerRow) return { totalIncome:0, totalExpense:0, balance:0 };
-
-  var start = SHEET_CFG.headerRow + 1;
-  var rows  = lr - SHEET_CFG.headerRow;
-  var amt = sh.getRange(start, SHEET_CFG.COL.AMT,  rows, 1).getValues();
-  var typ = sh.getRange(start, SHEET_CFG.COL.TYPE, rows, 1).getValues();
-
-  var inc = 0, exp = 0;
-  for (var i=0;i<rows;i++) {
-    var n = _num(amt[i][0]);
-    if (isNaN(n)) n = 0;
-    var t = (typ[i][0] || '').toString().trim();
+  var rng = sh.getDataRange().getValues();
+  var head = rng.shift() || [];
+  var idx = {
+    category: head.indexOf('項目類別'), amount: head.indexOf('金額'), type: head.indexOf('收入/支出')
+  };
+  var inc=0, exp=0;
+  rng.forEach(function(row){
+    var n = Number(row[idx.amount]||0) || 0;
+    var t = (row[idx.type]||'').toString().trim();
     if (t === '收入') inc += n;
     else if (t === '支出') exp += n;
-  }
+    // t === '中性' → 不計損益
+  });
   return { totalIncome: inc, totalExpense: exp, balance: inc - exp };
 }
 /** ================== 程式頁：自訂指令（儲存於試算表 code 分頁） ================== */
@@ -307,4 +306,23 @@ function readLoanProgress(total) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// --- Script Properties 儲存類別 ---
+function _prop(){ return PropertiesService.getScriptProperties(); }
+function _getCategories(){
+  try{ var txt = _prop().getProperty('categories'); return txt ? JSON.parse(txt) : []; }catch(e){ return []; }
+}
+function _setCategories(list){ _prop().setProperty('categories', JSON.stringify(list||[])); }
+
+// Public API: 新增類別（不建新分頁）
+function addCategory(obj){
+  obj = obj || {};
+  var name = (obj.name||'').toString().trim();
+  var io   = (obj.ioType||'支出').toString().trim(); // 收入/支出/中性
+  if (!name) throw new Error('缺少類別名稱');
+  var list = _getCategories();
+  var exists = list.some(function(it){ return it && it.name === name; });
+  if (!exists){ list.push({ name:name, ioType:io }); _setCategories(list); }
+  return { ok:true, count:list.length };
 }
