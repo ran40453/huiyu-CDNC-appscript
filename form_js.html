@@ -8,6 +8,10 @@
   let allCategoriesRaw = [];
   let CURRENT_BALANCE_ALL = 0;
 
+  // 舊路由別名 → 新路由 ID 對照（避免殘留的 data-nav/href 仍寫舊值）
+  const LEGACY_HASH_MAP = { info:'form_info', home:'form_input', insights:'form_data', code:'form_code', links:'links' };
+  const normalizeRoute = (name)=> LEGACY_HASH_MAP[name] || name;
+
   // ---- 通用：點擊 data-copy 複製指定節點的文字 ----
   function bindCopyDelegation(){
     document.addEventListener('click', function(e){
@@ -57,7 +61,13 @@
     tb.addEventListener('click', function(e){
       var a = e.target.closest('.tab-item[href^="#"]');
       if (!a) return;
-      setTimeout(function(){ highlightTab((location.hash||'#info').replace('#','')); }, 0);
+      if (document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', function(){
+          highlightTab((location.hash||'#form_info').replace('#',''));
+        });
+      } else {
+        highlightTab((location.hash||'#form_info').replace('#',''));
+      }
     });
     var menuBtn = document.getElementById('tabMenu');
     var sheet   = document.getElementById('menuSheet');
@@ -75,7 +85,14 @@
         }
       }, true);
       sheet.addEventListener('click', function(e){ if (e.target === sheet) { sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); } });
-      sheet.querySelectorAll('[data-nav]').forEach(function(btn){ btn.addEventListener('click', function(){ var dest = btn.getAttribute('data-nav'); if (dest){ location.hash = '#'+dest; } sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); }); });
+      sheet.querySelectorAll('[data-nav]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var dest = btn.getAttribute('data-nav');
+          if (dest){ location.hash = '#' + normalizeRoute(dest.replace('#','')); }
+          sheet.classList.remove('open');
+          sheet.setAttribute('aria-hidden','true');
+        });
+      });
       // 也允許用 ESC 關閉
       document.addEventListener('keydown', function(e){ if (e.key === 'Escape'){ sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); } });
     }
@@ -98,7 +115,7 @@ function bindShortDate(inpId, dispId){
       const [y,m,d] = inp.value.split('-');
       disp.textContent = `${m}/${d}`;
     } else {
-      disp.textContent = '—/—';
+      disp.textContent = (dispId === 'dispFrom') ? '起始日' : (dispId === 'dispTo' ? '截止日' : '—/—');
     }
   };
   inp.addEventListener('change', ()=>{ sync(); applyFilters(); });
@@ -133,6 +150,35 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   };
 });
 
+// 1) 預設暗色主題（若尚未指定）
+(function ensureDarkDefault(){
+  var root = document.documentElement;
+  if (!root.getAttribute('data-theme')) {
+    root.setAttribute('data-theme', 'dark');
+  }
+})();
+
+// 2) sumbar：移除中文冒號（：），保留文字本身
+(function stripSumbarColons(){
+  try{
+    var ids = ['sumTotal','sumBalanceAll'];
+    ids.forEach(function(id){
+      var el = document.getElementById(id);
+      if (!el) return;
+      // 嘗試處理前一個兄弟節點若是文字節點，移除其中的「：」
+      var prev = el.previousSibling;
+      if (prev && prev.nodeType === Node.TEXT_NODE) {
+        prev.textContent = (prev.textContent || '').replace(/：/g,'');
+      }
+      // 若前一個是元素節點且含有冒號的文字，也嘗試清掉
+      if (prev && prev.nodeType === Node.ELEMENT_NODE) {
+        var txt = prev.textContent || '';
+        if (txt.indexOf('：') >= 0) prev.textContent = txt.replace(/：/g,'');
+      }
+    });
+  }catch(e){ console.warn('stripSumbarColons failed', e); }
+})();
+
   // ===== 主題切換 =====
   const root = document.documentElement;
   const thLight = $('#thLight'), thDark = $('#thDark');
@@ -157,7 +203,8 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
     sidebar.setAttribute('aria-hidden','true');
   });
   $$('.sb-link').forEach(b=> b.addEventListener('click', ()=>{
-    location.hash = '#' + b.dataset.nav;
+    const dest = normalizeRoute((b.dataset.nav||'').replace('#',''));
+    if (dest) location.hash = '#' + dest;
     sidebar.classList.remove('open');
     sidebar.setAttribute('aria-hidden','true');
   }));
@@ -182,6 +229,22 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   function tip(text){ if (!msg) return; msg.textContent = text||''; if (text) setTimeout(()=> msg.textContent='', 2500); }
   function fmt(n){ return (Number(n||0)).toLocaleString(); }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // ====== decorateTypePills：渲染型別膠囊 ======
+  function decorateTypePills(){
+    try{
+      var rows = document.querySelectorAll('#tbl tbody tr');
+      rows.forEach(function(tr){
+        var td = tr.querySelector('td[data-k="type"], td:nth-child(5)');
+        if (!td) return;
+        var txt = (td.textContent||'').trim();
+        var klass = 'pill-neutral';
+        if (txt === '收入') klass = 'pill-income';
+        else if (txt === '支出') klass = 'pill-expense';
+        td.innerHTML = '<span class="pill '+klass+'">'+txt+'</span>';
+      });
+    }catch(e){ console.warn('decorateTypePills failed', e); }
+  }
 
   function loadOptions(){
     google.script.run
@@ -248,6 +311,11 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   // 排除清單（類別名稱）與「不計損益」型別
   const EXCLUDE_CATS  = new Set(['收入','中信自動扣']);
   const EXCLUDE_TYPES = new Set(['中性']);
+  // 收入組成排除：比照支出組成風格，改成可調式規則（含常見寫法）
+  const EXCLUDE_INCOME_RULE = {
+    byExact: new Set(['融資/借款','押金','押金融資 / 借款','房貸總額']),
+    byMatch: /(融資|借款|押金|房貸總額)/
+  };
 
   if (f){
     f.addEventListener('submit', (e)=>{
@@ -259,7 +327,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
           tip('已新增 ✅');
           f.reset(); f.date.value = iso;
           refreshTotals(); loadOptions();
-          if (!$('#page-insights').hidden) { loadRows(); refreshCharts(); }
+          if (!document.getElementById('form_data')?.hasAttribute('hidden')) { loadRows(); refreshCharts(); }
           submitBtn.disabled = false;
         })
         .withFailureHandler(err=>{
@@ -319,7 +387,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
         const img = document.getElementById('infoLogo');
         const url = (res && res.url || '').trim();
         const box = img?.closest('.logo-box');        // 你上一版有的 logo 容器（若沒用 logo-box 也沒關係）
-        const infoSection = document.getElementById('page-info');
+        const infoSection = document.getElementById('form_info');
         if (!img || !url || !infoSection) return;
 
         img.onload = () => {
@@ -346,30 +414,24 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
         img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
 
-      // 在地址右側加入複製（Material icon）按鈕（中/英）
-      try{
-        var addrEn = document.getElementById('addrEn');
-        var addrZh = addrEn ? addrEn.previousElementSibling : null;
-        if (addrZh && !addrZh.id) addrZh.id = 'addrZh';
-        function injectCopyBtnInline(targetId){
-          var target = document.getElementById(targetId); if (!target) return;
-          if (target.nextElementSibling && target.nextElementSibling.matches && target.nextElementSibling.matches('.addr-copy')) return;
-          // 讓容器變成行內 flex，使按鈕貼在右側
-          var parent = target.parentElement;
-          if (parent){ parent.style.display = 'flex'; parent.style.alignItems = 'center'; parent.style.gap = '8px'; }
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'btn ghost addr-copy';
-          btn.setAttribute('data-copy', '#'+targetId);
-          btn.title = '複製地址';
-          btn.style.marginLeft = '6px';
-          btn.style.padding = '4px 6px';
-          btn.innerHTML = '<span class="micon" style="font-size:18px;line-height:1;vertical-align:middle;">content_copy</span>';
-          target.insertAdjacentElement('afterend', btn);
-        }
-        if (addrZh) injectCopyBtnInline('addrZh');
-        if (addrEn) injectCopyBtnInline('addrEn');
-      }catch(_e){}
+      // 地址複製按鈕：若不存在則輕量注入（搭配 bindAddrCopyButtons 自動重置圖示）
+      function injectAddrCopyIfMissing(targetId){
+        var target = document.getElementById(targetId); if (!target) return;
+        var next = target.nextElementSibling;
+        if (next && next.classList && next.classList.contains('addr-copy')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn ghost addr-copy';
+        btn.setAttribute('data-copy-target', '#'+targetId);
+        btn.title = '複製地址';
+        btn.innerHTML = '<span class="micon" style="font-size:18px;line-height:1;vertical-align:middle;">content_copy</span>';
+        // 與地址同一行顯示
+        var parent = target.parentElement;
+        if (parent){ parent.style.display='flex'; parent.style.alignItems='center'; parent.style.gap='8px'; }
+        target.insertAdjacentElement('afterend', btn);
+      }
+      injectAddrCopyIfMissing('addrZh');
+      injectAddrCopyIfMissing('addrEn');
 
          // 💡 重點：設定全屏背景用的 CSS 變數
         document.body.style.setProperty('--hero-img', `url("${url}")`);
@@ -434,6 +496,43 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
           })();
           renderInfoKPIs(rows);
           renderInfoCatbar(rows);
+          renderInfoIncbar(rows);
+  function renderInfoIncbar(rows){
+    var catMap = new Map();
+    var total = 0;
+    rows.forEach(function(r){
+      if (r.type !== '收入') return; // 僅統計收入
+      var cat = String(r.category||'').trim();
+      if (EXCLUDE_INCOME_RULE.byExact.has(cat) || EXCLUDE_INCOME_RULE.byMatch.test(cat)) return;
+      var n = Number(r.amount||0) || 0; if (n<=0) return;
+      total += n; var cur = catMap.get(cat)||0; catMap.set(cat, cur+n);
+    });
+
+    var track = document.getElementById('incbar-track');
+    var totalEl = document.getElementById('incbar-total');
+    var legend = document.getElementById('inclegend');
+    if (!track || !legend || !totalEl) return;
+    track.innerHTML = ''; legend.innerHTML = '';
+    if (total <= 0){ totalEl.textContent = '—'; return; }
+    totalEl.textContent = Number(total).toLocaleString();
+
+    var left = 0;
+    Array.from(catMap.entries()).sort(function(a,b){ return b[1]-a[1]; }).forEach(function(entry){
+      var cat = entry[0], val = entry[1];
+      var pct = (val/total)*100;
+      var seg = document.createElement('span');
+      seg.className = 'seg'; seg.style.position='absolute'; seg.style.top='0'; seg.style.bottom='0';
+      seg.style.left = left + '%'; seg.style.width = pct + '%'; seg.style.background = colorFor(cat);
+      track.appendChild(seg);
+      left += pct;
+
+      var li = document.createElement('span');
+      li.className = 'legend-item';
+      li.innerHTML = '<i class="dot" style="display:inline-block;width:10px;height:10px;border-radius:999px; background:'+colorFor(cat)+';"></i> ' +
+                     escapeHtml(cat) + ' ' + Number(val).toLocaleString();
+      legend.appendChild(li);
+    });
+  }
         })
         .withFailureHandler(function(err){ console.warn('readRowsLatest for info fail:', err && err.message || err); })
         .readRowsLatest(50000);
@@ -532,7 +631,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   let sortState = { key:'date', dir:'desc' };
   let chartFeatured, chartOthers;
 
-  // ===== 程式頁（#page-code）：自訂指令 =====
+  // ===== 程式頁（#form_code）：自訂指令 =====
   var codePageBooted = false;
   var customSeq = 0;
   function renderCustomCommands(list){
@@ -603,7 +702,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   // 左側 sort 抽屜
   const fltToggle    = document.getElementById('fltToggle');
   const fltDrawer    = document.getElementById('fltDrawer');
-  const pageInsights = document.getElementById('page-insights');
+  const pageInsights = document.getElementById('form_data');
 
   function setDrawer(open){
     if (!fltDrawer || !fltToggle || !pageInsights) return;
@@ -684,6 +783,30 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
   }
 
+  function bindAddrCopyButtons(){
+    document.querySelectorAll('[data-copy-target]').forEach(function(btn){
+      var targetSel = btn.getAttribute('data-copy-target');
+      var target = targetSel ? document.querySelector(targetSel) : null;
+      if (!target) return;
+      var icon = btn.querySelector('.micon');
+      var original = icon ? icon.textContent : '';
+      var timer = null;
+      btn.addEventListener('click', function(){
+        var txt = (target.textContent || '').trim();
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).then(function(){
+          if (icon) icon.textContent = 'check';
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(function(){
+            if (icon) icon.textContent = (original || 'content_copy');
+          }, 2000);
+        });
+      });
+    });
+  }
+  // 初始化時呼叫一次
+  bindAddrCopyButtons();
+
   function loadRows(){
     if (!tblBody) return;
     rowsMsg.textContent = '載入中…';
@@ -744,6 +867,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
       if (sortState.key === k) sortState.dir = (sortState.dir === 'asc' ? 'desc' : 'asc');
       else { sortState.key = k; sortState.dir = 'asc'; }
       renderTable(filteredRows);
+      decorateTypePills();
     });
   });
 
@@ -856,6 +980,7 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
 
     rowCount.textContent = String(filteredRows.length);
     renderTable(filteredRows);
+    decorateTypePills();
     refreshCharts();
 
     renderSumBar();
@@ -877,28 +1002,65 @@ document.querySelectorAll('.segbtn[data-q]').forEach(btn=>{
   });
   chartPh?.addEventListener('click', ()=> setChartsCollapsed(false));
 
-  // ===== 路由 + 分頁名稱 =====
-  const pageNameEl = document.getElementById('pageName');
-  const pageNames  = { info:'資訊', home:'記帳', insights:'分析', code:'程式' };
-
+  // ===== 路由 + 分頁名稱（動態偵測所有 form_ 開頭的容器） =====
+  const pageNameEl = document.getElementById('formInfo');
+  function getAllPages(){
+    // 支援三個主頁 + 額外頁（links/code/form_code）
+    return Array.from(document.querySelectorAll('[id^="form_"], #links, #code, #form_code'))
+      .map(sec => sec.id);
+  }
+  function currentPageFromHash(){
+    var raw = (location.hash || '#form_info').replace('#','');
+    var h = normalizeRoute(raw);
+    var all = getAllPages();
+    return all.indexOf(h) >= 0 ? h : (all.indexOf('form_info')>=0 ? 'form_info' : all[0] || 'form_info');
+  }
+  const pageBooted = Object.create(null);
   function showPage(name){
-    $('#page-info').hidden     = (name !== 'info');
-    $('#page-home').hidden     = (name !== 'home');
-    $('#page-insights').hidden = (name !== 'insights');
-    $('#page-code').hidden     = (name !== 'code');
-    $$('.sb-link').forEach(b=> b.classList.toggle('active', b.dataset.nav === name));
-    pageNameEl.textContent = pageNames[name] || '';
-    if (name === 'insights') { setDrawer(false); loadRows(); }
-    if (name === 'info')     { loadInfo(); }
-    if (name === 'code')     { initCodePage(); }
+    var all = getAllPages();
+    // 先隱藏所有頁（form_* 與 links/code）
+    document.querySelectorAll('[id^="form_"], #links, #code, #form_code').forEach(function(sec){
+      if (sec.id === name){ sec.removeAttribute('hidden'); }
+      else{ sec.setAttribute('hidden',''); }
+    });
+    // 高亮 tab（data-nav 現在等於完整 ID）
+    document.querySelectorAll('.tabbar .tab-item').forEach(function(el){
+      el.classList.toggle('active', normalizeRoute(el.dataset.nav||'') === name);
+    });
+    // 標題
+    if (pageNameEl){
+      var map = { form_info:'資訊', form_input:'記帳', form_data:'分析', links:'連結', code:'程式', form_code:'程式' };
+      pageNameEl.textContent = map[name] || name;
+    }
+    // 左側抽屜 aria
+    var drawer = document.getElementById('fltDrawer');
+    if (drawer){ drawer.setAttribute('aria-hidden', name==='form_data' ? 'false' : 'true'); }
+
+    // 首次進入各頁的初始化（只跑一次）
+    if (!pageBooted[name]){
+      pageBooted[name] = true;
+      if (name === 'form_info'){ try{ loadInfo(); }catch(e){} }
+      if (name === 'form_data'){ try{ loadRows(); }catch(e){} }
+      if (name === 'code' || name === 'form_code' || name === 'links'){ try{ initCodePage(); }catch(e){} }
+    }
+
+    // 切頁後短延遲調整圖表尺寸，避免初次寬度讀錯
+    setTimeout(function(){ if (typeof window.refreshChartsOnce === 'function') window.refreshChartsOnce(); }, 0);
   }
-  function applyHash(){
-    const h = (location.hash || '#info').replace('#','');
-    showPage(['info','home','insights','code'].includes(h) ? h : 'info');
-    highlightTab(['info','home','insights','code'].includes(h) ? h : 'info');
-  }
-  window.addEventListener('hashchange', applyHash);
-  applyHash();
+  window.addEventListener('hashchange', function(){ showPage(currentPageFromHash()); });
+
+  (function boot(){
+    try{
+      // 當所有頁容器都還沒出現在 DOM 時，延遲重試
+      if (!document.querySelector('[id^="form_"], #links, #code, #form_code')){
+        return setTimeout(boot, 30);
+      }
+      showPage(currentPageFromHash());
+    }catch(e){
+      console.error('[router boot error]', e);
+      setTimeout(boot, 60);
+    }
+  })();
 
 /* === 分析頁：加總列 ===
    - 顯示目前「類別」的選取（= 左抽屜 chips 的 active）

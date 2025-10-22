@@ -19,10 +19,11 @@
         <button id="sbClose" class="sb-close" type="button" title="關閉">⇤</button>
       </div>
       <div class="sb-group">
-        <button class="sb-link" data-nav="info"><strong>資訊</strong></button>
-        <button class="sb-link" data-nav="home"><strong>記帳</strong></button>
-        <button class="sb-link" data-nav="insights"><strong>分析</strong></button>
-        <button class="sb-link" data-nav="code"><strong>程式</strong></button>
+        <button class="sb-link" data-nav="form_info"><strong>資訊</strong></button>
+        <button class="sb-link" data-nav="form_input"><strong>記帳</strong></button>
+        <button class="sb-link" data-nav="form_data"><strong>分析</strong></button>
+        <button class="sb-link" data-nav="form_links"><strong>連結</strong></button>
+        <button class="sb-link" data-nav="form_code"><strong>程式</strong></button>
       </div>
       <div class="sb-foot">v10 · iOS 亮/暗</div>
     </aside>
@@ -43,13 +44,13 @@
           </div>
         </div>
         <div class="topbar-center">
-          <div class="page-name" id="pageName">資訊</div>
+          <div class="form_info" id="formInfo">資訊</div>
         </div>
       </div>
 
-      <!-- Page: Info -->
-      <section id="page-info" class="wrap" hidden>
-        <div class="card" style="text-align:center; padding-top:28px;">
+      <!-- Form: Info -->
+      <section id="form_info" class="wrap" hidden>
+        <div class="card is-wide" style="text-align:center; padding-top:28px;">
           <!-- logo：自適應比例 + 圓角一致 -->
           <div class="logo-box">
             <img id="infoLogo" alt="logo">
@@ -60,9 +61,15 @@
           </h1>
 
           <!-- 中文地址 + 英文地址（英文從原標題列搬來這裡） -->
-          <div style="color:var(--muted); font-weight:600; margin-bottom:14px; line-height:1.5;">
-            <div>406015 台中市北屯區詔安街88號4樓之21</div>
-            <div id="addrEn">4F-21, No. 88, Zhao'an Street, Beitun District, Taichung City 406015, Taiwan (R.O.C.)</div>
+          <div class="addr-grid">
+            <div class="addr-box">
+              <div id="addrZh">406015 台中市北屯區詔安街88號4樓之21</div>
+              <button class="btn addr-copy" data-copy-target="#addrZh"><span class="micon">content_copy</span></button>
+            </div>
+            <div class="addr-box">
+              <div id="addrEn">4F-21, No. 88, Zhao'an Street, Beitun District, Taichung City 406015, Taiwan (R.O.C.)</div>
+              <button class="btn addr-copy" data-copy-target="#addrEn"><span class="micon">content_copy</span></button>
+            </div>
           </div>
 
           <div class="row" style="justify-content:center; gap:14px;">
@@ -101,51 +108,61 @@
           <h3 class="subtitle" style="margin:0 0 8px;">本月重點</h3>
           <div class="row" style="gap:10px; align-items:stretch;">
             <div class="col">
-              <div class="card" style="margin:0;">
+              <div class="card kpi-eq" style="margin:0;">
                 <div class="subtitle" style="margin:0 0 6px;">本月總損益</div>
-                <div id="kpiThisMonth" style="font-weight:800; font-size:22px;">—</div>
+                <div id="kpiThisMonth" style="font-weight:800; font-size:22px; overflow-wrap:anywhere; max-width:100%;">—</div>
               </div>
             </div>
             <div class="col">
-              <div class="card" style="margin:0;">
+              <div class="card kpi-eq" style="margin:0;">
                 <div class="subtitle" style="margin:0 0 6px;">已繳管理費</div>
-                <div id="kpiMgmtPaid" style="font-weight:800; font-size:22px;">—</div>
+                <div id="kpiMgmtPaid" style="font-weight:800; font-size:22px; overflow-wrap:anywhere; max-width:100%;">—</div>
               </div>
             </div>
             <div class="col">
-              <div class="card" style="margin:0;">
+              <div class="card kpi-eq" style="margin:0;">
                 <div class="subtitle" style="margin:0 0 6px;">累積水電費</div>
-                <div id="kpiUtilitiesSum" style="font-weight:800; font-size:22px;">—</div>
+                <div id="kpiUtilitiesSum" style="font-weight:800; font-size:22px; overflow-wrap:anywhere; max-width:100%;">—</div>
               </div>
             </div>
             <div class="col">
-              <div class="card" style="margin:0;">
+              <div class="card kpi-eq" style="margin:0;">
                 <div class="subtitle" style="margin:0 0 6px;">設備費用</div>
-                <div id="kpiEquipment" style="font-weight:800; font-size:22px;">—</div>
+                <div id="kpiEquipment" style="font-weight:800; font-size:22px; overflow-wrap:anywhere; max-width:100%;">—</div>
               </div>
             </div>
           </div>
         </div>
 
         <div class="card">
-          <h3 class="subtitle" style="margin:0 0 8px;">支出組成</h3>
-          <!-- dynamic stacked bar：JS 會把各類別的比例注入到 catbar-track 內的 segment -->
+          <h3 class="subtitle" style="margin:0 0 8px;">支出與收入組成</h3>
+
+          <!-- 支出組成 -->
+          <div class="subtitle" style="margin:0 0 6px; font-weight:700;">支出</div>
           <div id="catbar" class="catbar" style="display:flex; align-items:center; gap:10px;">
-            <div id="catbar-track" class="catbar-track" style="flex:1 1 auto; height:14px; border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;">
-              <!-- JS inject: <span class="seg" style="position:absolute;left:0;width:25%;top:0;bottom:0;background:var(--tint);"></span> ... -->
-            </div>
+            <div id="catbar-track" class="catbar-track" style="flex:1 1 auto; height:14px; border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;"></div>
             <div id="catbar-total" class="catbar-total" style="min-width:80px; text-align:right; font-weight:700;">—</div>
           </div>
-          <!-- legend：由 JS 自動生成；每個項目是一個圓點 + 類別名 + 金額 -->
-          <div id="catlegend" class="catlegend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">
-            <!-- JS inject: <span class="legend-item"><i class="dot" style="background:#abc;"></i> 房貸 12,345</span> ... -->
+          <div id="catlegend" class="catlegend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>
+          <div class="subtitle" style="margin-top:8px; color:var(--muted); font-size:12px;">* 自動排除：收入、「中信自動扣」；僅統計支出類別</div>
+
+          <!-- 收入組成 -->
+          <div class="subtitle" style="margin:14px 0 6px; font-weight:700;">收入</div>
+          <div id="incbar" class="catbar" style="display:flex; align-items:center; gap:10px;">
+            <div id="incbar-track" class="catbar-track" style="flex:1 1 auto; height:14px; border-radius:999px; background:color-mix(in oklab, var(--muted) 12%, transparent); position:relative; overflow:hidden;"></div>
+            <div id="incbar-total" class="catbar-total" style="min-width:80px; text-align:right; font-weight:700;">—</div>
           </div>
-          <div class="subtitle" style="margin-top:8px; color:var(--muted); font-size:12px;">* 自動排除：收入、中信自動扣；僅統計支出類別</div>
+          <div id="inclegend" class="catlegend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>
+          <div class="subtitle" style="margin-top:8px; color:var(--muted); font-size:12px;">
+            * 已排除：融資/借款、押金、房貸總額（收入端不計）。
+          </div>
         </div>
+
+
       </section>
 
-      <!-- Page: Home（表單 + KPI） -->
-      <section id="page-home" class="wrap">
+      <!-- Form: Input（表單 + KPI） -->
+      <section id="form_input" class="wrap">
         <div class="card">
           <form id="f" autocomplete="off">
             <div class="row">
@@ -223,92 +240,97 @@
         </div>
       </section>
 
-      <!-- Page: Insights（左抽屜篩選 + sticky 縮高圖 + 清單） -->
-      <section id="page-insights" class="wrap" hidden>
-        <!-- 左側 sort 抽屜 toggle -->
-        <button id="fltToggle" class="flt-toggle" type="button">⇥ <small>sort</small></button>
+      <!-- Form: Data（左抽屜篩選 + sticky 縮高圖 + 清單） -->
+      <section id="form_data" class="wrap" hidden>
+        <div class="data-grid">
+          <!-- 左側：篩選卡片 -->
+          <div class="data-left">
+            <aside id="fltDrawer" class="flt-drawer open card flt-fixed" aria-hidden="false">
+              <div class="flt-title">篩選</div>
 
-        <!-- 左側抽屜 -->
-        <aside id="fltDrawer" class="flt-drawer" aria-hidden="true">
-          <div class="flt-title">篩選</div>
+              <div class="flt-group">
+                <div class="flt-label">日期區間</div>
+                <div class="row date-row" style="gap:8px;">
+                  <div class="date-field">
+                    <span class="date-display" id="dispFrom">—/—</span>
+                    <input type="date" id="fltFrom" aria-label="起日">
+                  </div>
+                  <div class="date-field">
+                    <span class="date-display" id="dispTo">—/—</span>
+                    <input type="date" id="fltTo" aria-label="迄日">
+                  </div>
+                </div>
 
-          <div class="flt-group">
-            <div class="flt-label">日期區間</div>
-            <div class="row date-row" style="gap:8px;">
-              <div class="date-field">
-                <span class="date-display" id="dispFrom">—/—</span>
-                <input type="date" id="fltFrom" aria-label="起日">
+                <div class="segmulti" style="margin-top:8px;">
+                  <button type="button" class="segbtn" data-q="this-month">本月</button>
+                  <button type="button" class="segbtn" data-q="all">全部</button>
+                </div>
               </div>
-              <div class="date-field">
-                <span class="date-display" id="dispTo">—/—</span>
-                <input type="date" id="fltTo" aria-label="迄日">
+
+              <div class="flt-group">
+                <div class="flt-label">收入 / 支出（可複選）</div>
+                <div id="segType" class="segmulti">
+                  <button type="button" class="segbtn active" data-type="收入">收入</button>
+                  <button type="button" class="segbtn active" data-type="支出">支出</button>
+                  <button type="button" class="segbtn active" data-type="中性">中性</button>
+                </div>
+              </div>
+
+              <div class="flt-group">
+                <div class="flt-label">類別（可複選）</div>
+                <div id="chipsCat" class="chips vertical"></div>
+              </div>
+
+              <div class="flt-group">
+                <div class="flt-label">付款人（可複選）</div>
+                <div id="chipsPayer" class="chips vertical"></div>
+              </div>
+            </aside>
+          </div>
+
+          <!-- 右側：圖表 + 合計列 + 清單 -->
+          <div class="data-right">
+            <!-- sticky 圖表（左：分類長條｜右：時間累積） -->
+            <div class="card data-sticky" id="chartsBox">
+              <h3 class="subtitle" style="margin:0 0 6px;">類別加總（左：分類｜右：時間累積）</h3>
+              <div class="chart-placeholder" id="chartPlaceholder">點選開啟圖表</div>
+              <div class="grid-2-tight" id="chartsGrid">
+                <div class="charts-compact"><canvas id="chartFeatured"></canvas></div>
+                <div class="charts-compact"><canvas id="chartOthers"></canvas></div>
+              </div>
+              <div class="chart-actions">
+                <button id="btnChartToggle" type="button" class="chart-toggle-btn">收合圖表</button>
               </div>
             </div>
 
-            <div class="segmulti" style="margin-top:8px;">
-              <button type="button" class="segbtn" data-q="this-month">本月</button>
-              <button type="button" class="segbtn" data-q="all">全部</button>
+            <!-- 分析頁：篩選加總列（放在清單上方） -->
+            <div class="sumbar" id="sumBar">
+              <div class="sum-left" id="sumTags"><!-- 類別小氣泡會由 JS 注入 --></div>
+              <div class="sum-right"><span id="sumTotal">—</span></div>
             </div>
-          </div>
 
-          <div class="flt-group">
-            <div class="flt-label">收入 / 支出（可複選）</div>
-            <div id="segType" class="segmulti">
-              <button type="button" class="segbtn active" data-type="收入">收入</button>
-              <button type="button" class="segbtn active" data-type="支出">支出</button>
+            <!-- 清單 -->
+            <div class="card">
+              <div class="meta-row">
+                <div>清單（<span id="rowCount">0</span> 筆）</div>
+                <div id="rowsMsg" class="subtitle"></div>
+              </div>
+              <div style="overflow:auto;">
+                <table id="tbl">
+                  <thead>
+                    <tr>
+                      <th data-k="date">日期</th>
+                      <th data-k="title">項目名稱</th>
+                      <th data-k="category">類別</th>
+                      <th data-k="amount" class="t-right">金額</th>
+                      <th data-k="type">收入/支出</th>
+                      <th data-k="payer">付款人</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
-          </div>
-
-          <div class="flt-group">
-            <div class="flt-label">類別（可複選）</div>
-            <div id="chipsCat" class="chips vertical"></div>
-          </div>
-
-          <div class="flt-group">
-            <div class="flt-label">付款人（可複選）</div>
-            <div id="chipsPayer" class="chips vertical"></div>
-          </div>
-        </aside>
-
-        <!-- sticky 圖表（左：分類長條｜右：時間累積） -->
-        <div class="card insights-sticky" id="chartsBox">
-          <h3 class="subtitle" style="margin:0 0 6px;">類別加總（左：分類｜右：時間累積）</h3>
-          <div class="chart-placeholder" id="chartPlaceholder">點選開啟圖表</div>
-          <div class="grid-2-tight" id="chartsGrid">
-            <div class="charts-compact"><canvas id="chartFeatured"></canvas></div>
-            <div class="charts-compact"><canvas id="chartOthers"></canvas></div>
-          </div>
-          <div class="chart-actions">
-            <button id="btnChartToggle" type="button" class="chart-toggle-btn">收合圖表</button>
-          </div>
-        </div>
-
-        <!-- 分析頁：篩選加總列（放在清單上方） -->
-        <div class="sumbar" id="sumBar">
-          <div class="sum-left" id="sumTags"><!-- 類別小氣泡會由 JS 注入 --></div>
-          <div class="sum-right"><span id="sumTotal">—</span></div>
-        </div>
-
-        <!-- 清單 -->
-        <div class="card">
-          <div class="meta-row">
-            <div>清單（<span id="rowCount">0</span> 筆）</div>
-            <div id="rowsMsg" class="subtitle"></div>
-          </div>
-          <div style="overflow:auto;">
-            <table id="tbl">
-              <thead>
-                <tr>
-                  <th data-k="date">日期</th>
-                  <th data-k="title">項目名稱</th>
-                  <th data-k="category">類別</th>
-                  <th data-k="amount" class="t-right">金額</th>
-                  <th data-k="type">收入/支出</th>
-                  <th data-k="payer">付款人</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
           </div>
         </div>
       </section>
@@ -320,16 +342,16 @@
   <!-- 手機底部 Tabbar（icon 版） -->
   <nav class="tabbar" role="tablist" aria-label="底部導覽">
     <div class="tab-inner">
-      <a href="#info" class="tab-item" data-nav="info">
+      <a href="#form_info"  class="tab-item" data-nav="form_info">
         <span class="micon" aria-hidden="true">home</span>
         <span class="tab-label">資訊</span>
       </a>
-      <a href="#home" class="tab-item" data-nav="home">
-        <span class="micon" aria-hidden="true">receipt_long</span>
+      <a href="#form_input" class="tab-item" data-nav="form_input">
+        <span class="micon" aria-hidden="true">add_circle</span>
         <span class="tab-label">記帳</span>
       </a>
-      <a href="#insights" class="tab-item" data-nav="insights">
-        <span class="micon" aria-hidden="true">insights</span>
+      <a href="#form_data"  class="tab-item" data-nav="form_data">
+        <span class="micon" aria-hidden="true">list_alt</span>
         <span class="tab-label">分析</span>
       </a>
       <button type="button" id="tabMenu" class="tab-item" data-nav="menu">

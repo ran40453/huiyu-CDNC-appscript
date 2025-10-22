@@ -1,5 +1,6 @@
 <style>
 /* ===== iOS 亮色（含玻璃） ===== */
+[hidden]{ display:none !important; }
     :root{
       --bg: #ffffff;
       --fg: #0b0b0f;
@@ -23,12 +24,12 @@
       --ink-balance-bg: rgba(52,199,89,.10);
       --ink-balance-border: rgba(52,199,89,.28);
 
-      /* 左側 sort 抽屜寬度 */
-      --flt-w: 140px;
+      /* 左側 sort 寬度 */
+      --flt-w: 120px;
       --ico-bg: var(--field-bg);
       --ico-border: var(--field-border);
     }
-    @media (max-width: 900px){ :root{ --flt-w: 130px; } }
+    @media (max-width: 900px){ :root{ --flt-w: 110px; } }
 
     /* ===== 暗色 ===== */
     html[data-theme="dark"]{
@@ -40,7 +41,10 @@
       --ink-expense-bg: rgba(255,69,58,.22); --ink-expense-border: rgba(255,69,58,.55);
       --ink-balance-bg: rgba(48,209,88,.22); --ink-balance-border: rgba(48,209,88,.55);
     }
-
+    html[data-theme="dark"] #sumTotal,
+    html[data-theme="dark"] #sumBalanceAll{
+      background:#fff; color:#111;
+    }
     html, body { height: 100%; }
     body {
       margin: 0;
@@ -117,7 +121,7 @@
       font-weight: 800; letter-spacing:-.01em;
     }
     .page-name{ font-size: 16px; color: var(--muted); }
-    .wrap{ max-width: 980px; margin: 0 auto; padding: 16px; }
+    .wrap{ max-width: 1280px; margin: 0 auto; padding: 16px; }
     .card{
       background: var(--card);
       border: 1px solid var(--line);
@@ -162,13 +166,13 @@
     @media (max-width: 560px){ .actions{ flex-direction: column; align-items: stretch; } .btn{ width: 100%; } }
 
     /* KPI */
-    .ink{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 6px 0 4px; }
-    .ink-card{ border-radius: 16px; padding: 12px 14px; border: 1px solid var(--line); box-shadow: 0 6px 14px rgba(0,0,0,.04); }
+    .ink{ display:grid; grid-template-columns: repeat(3, minmax(180px,1fr)); gap: 14px; margin: 6px 0 4px; }
+    .ink-card{ border-radius: 16px; padding: 16px; border: 1px solid var(--line); box-shadow: var(--shadow); }
     .ink-income{ background: var(--ink-income-bg); border-color: var(--ink-income-border); }
     .ink-expense{ background: var(--ink-expense-bg); border-color: var(--ink-expense-border); }
     .ink-balance{ background: var(--ink-balance-bg); border-color: var(--ink-balance-border); }
-    .ink-label{ font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-    .ink-value{ font-weight: 800; font-size: clamp(18px, 3.6vw, 22px); letter-spacing: -.01em; }
+    .ink-label{ font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    .ink-value{ font-weight: 800; font-size: clamp(20px, 3.8vw, 26px); letter-spacing: -.01em; overflow-wrap:anywhere; max-width:100%; }
 
     /* 表格與圖表 */
     .meta-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; color:var(--muted); }
@@ -177,7 +181,8 @@
     th{ color: var(--muted); font-weight:700; cursor: pointer; user-select: none; }
     .t-right{ text-align:right; white-space:nowrap; }
 
-    .grid-2-tight{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-2-tight{ display:grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+    .grid-2-tight > *{ min-width:0; }
     @media (max-width: 900px){ .grid-2-tight{ grid-template-columns: 1fr; } }
     .charts-compact{ height: 25vh; min-height: 200px; }
     canvas{ width: 100%; height: 100%; }
@@ -212,7 +217,20 @@
     .flt-drawer.open{ transform: translateX(0); }
     .flt-title{ font-weight:800; margin: 2px 0 10px; letter-spacing:-.01em; }
     .flt-group{ margin: 10px 0 14px; }
+    .flt-drawer.flt-fixed .flt-title{ font-size: 16px; }
+    .flt-drawer.flt-fixed .chips.vertical .chip{ width:auto; display:inline-block; }
     .flt-label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    /* 當以固定卡片呈現（JS 會加上 .flt-fixed 與 .card） */
+    .flt-drawer.flt-fixed{
+      position: static;
+      transform: none;
+      width: auto;
+      max-width:600px;
+      margin: 0 auto 12px;   /* 置中並與卡片同節奏 */
+      border-right: 1px solid var(--line);
+      border-radius: 22px;
+      padding: clamp(12px, 2vw, 16px);
+    }
     .segmulti{ display:flex; gap:6px; flex-wrap:wrap; }
     .segmulti .segbtn{
       border:1px solid var(--field-border);
@@ -236,14 +254,14 @@
     }
 
     /* sticky 圖表（可收合） */
-    .insights-sticky{ position: sticky; top: 64px; z-index: 5; margin: 10px auto 12px; padding: 10px 12px; }
-    .insights-sticky.collapsed .grid-2-tight{ display:none; }
+    .data-sticky{ position: sticky; top: 64px; z-index: 5; margin: 10px auto 12px; padding: 10px 12px; }
+    .data-sticky.collapsed .grid-2-tight{ display:none; }
     .chart-placeholder{
       display:none; align-items:center; justify-content:center;
       height: 42px; border: 1px dashed var(--line); border-radius: 12px;
       background: var(--tag-bg); color: var(--muted); font-weight:700; cursor:pointer;
     }
-    .insights-sticky.collapsed .chart-placeholder{ display:flex; }
+    .data-sticky.collapsed .chart-placeholder{ display:flex; }
     .chart-actions{ display:flex; justify-content:flex-end; margin-top:8px; }
     .chart-toggle-btn{
       border:1px solid var(--line); background: var(--field-bg); color: var(--fg);
@@ -251,7 +269,7 @@
     }
 
     /* 抽屜開啟時：右側內容右移 + 留 14px 間距 */
-    #page-insights.flt-shift{ margin-left: calc(var(--flt-w) + 14px); transition: margin-left .25s ease; }
+    #form_data.flt-shift{ margin-left:0; }
 
     /* 自適應比例的 logo 容器 */
 .logo-box{
@@ -288,7 +306,7 @@
 }
 
 /* 資訊頁：以 logo 做為全幅模糊背景（Apple 霧面玻璃風） */
-#page-info{
+#form_info{
   position: relative;
   isolation: isolate;           /* 確保內外層疊影不互相影響 */
   border-radius: 22px;          /* 和 .wrap 內卡片圓角氛圍一致 */
@@ -331,7 +349,7 @@ html[data-theme="dark"] body::after{
 }
 
 /* 暗色模式：改用暗化疊色，降低亮度避免刺眼 */
-html[data-theme="dark"] #page-info::after{
+html[data-theme="dark"] #form_info::after{
   background:
     radial-gradient(120% 80% at 50% -20%, rgba(0,0,0,.38), transparent 55%),
     radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,.34), transparent 55%),
@@ -340,11 +358,17 @@ html[data-theme="dark"] #page-info::after{
 }
 
 /* 卡片本身已經有玻璃感，為了更像 iOS 可微增強 */
-#page-info .card{
+#form_info .card{
   -webkit-backdrop-filter: blur(14px) saturate(120%);
   backdrop-filter: blur(14px) saturate(120%);
   background: color-mix(in oklab, var(--card) 86%, transparent);
 }
+/* 保險：避免某處對組成卡片設了 max-width */
+#form_info .card:has(#catbar-track){ max-width: none; }
+
+/* 讓地址所在資訊卡可以更寬一些 */
+.card.is-wide{ max-width: 1100px; margin-left:auto; margin-right:auto; }
+
 
 /* ===== 分析頁：精簡加總列 ===== */
 .sumbar{
@@ -377,6 +401,8 @@ html[data-theme="dark"] #page-info::after{
 .sum-right{
   font-weight: 900; font-size: 16px; white-space: nowrap;
 }
+.sum-right-block{ display:inline-flex; align-items:center; gap:6px; }
+.sum-sep{ opacity:.5; margin: 0 6px; }
 
 /* 沒有特定類別時（等於全部）顯示灰色徽章 */
 .sum-tag.is-all{
@@ -417,8 +443,8 @@ html[data-theme="dark"] #page-info::after{
 }
 
 .flt-drawer .row.date-row .date-field{
-  width: calc(50% - 3px); /* 兩等分，扣掉間距的一半 */
-  min-width: 0;           /* 防止被內容撐開 */
+  width: calc(50% - 3px); /* 與 segbtn 一致 */
+  min-width: 0;
 }
 
 /* 再精簡一下內距與字級，確保小抽屜也穩 */
@@ -426,10 +452,10 @@ html[data-theme="dark"] #page-info::after{
 .flt-drawer .date-display{ font-size: 12px; }
 
 /* ===== 共用：Material Icons（Round） ===== */
-.micon{ font-family: 'Material Icons Round', 'Material Icons', system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans', sans-serif; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.micon{ font-family: 'Material Icons Round', 'Material Icons', system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans', sans-serif; font-weight: normal; font-style: normal; font-size: 48px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 /* ===== 手機底部 Tabbar（<=1024px 顯示） ===== */
-:root{ --tabbar-h: 144px; }
+:root{ --tabbar-h: 220px; }
 .tabbar{ position: fixed; left: 0; right: 0; bottom: 0; height: var(--tabbar-h); background: var(--card); border-top: 1px solid var(--line); -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur); box-shadow: 0 -12px 28px rgba(0,0,0,.06); z-index: 40; display: none; }
 .tabbar .tab-inner{
   height: 100%;
@@ -437,10 +463,10 @@ html[data-theme="dark"] #page-info::after{
   align-items: center;
   justify-content: space-around;
   gap: 0;
-  padding: 12px 18px;
+  padding: 6px 18px;
 }
 .tabbar .tab-item{
-  width: 72px; height: 72px;
+  width: 108px; height: 108px;
   display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--line);
   background: var(--field-bg); color: var(--fg);
@@ -450,7 +476,6 @@ html[data-theme="dark"] #page-info::after{
   box-shadow: 0 2px 0 rgba(255,255,255,.3) inset, 0 6px 14px rgba(0,0,0,.04);
 }
 .tabbar .tab-item:active{ transform: translateY(1px) scale(.98); }
-.tabbar .tab-item .micon{ font-size: 30px; }
 .tabbar .tab-item.active{
   background: var(--tint); color: #fff; border-color: transparent;
   box-shadow: 0 8px 18px rgba(10,132,255,.25);
@@ -492,8 +517,178 @@ html[data-theme="dark"] #page-info::after{
   width:10px; height:10px; border-radius:999px; display:inline-block;
   background: var(--muted);
 }
+/* 組成條（支出/收入通用） */
+.catbar{ display:flex; align-items:center; gap:10px; }
+.catbar-track{
+  flex:1 1 auto; height:14px; border-radius:999px;
+  background:color-mix(in oklab, var(--muted) 12%, transparent);
+  position:relative; overflow:hidden;
+}
+.catbar-total{ min-width:92px; text-align:right; font-weight:700; }
+.catlegend{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
 
 /* === 地址複製按鈕（小型 icon 鈕：補 baseline 樣式；JS 已插入） === */
 .btn.addr-copy{ padding: 4px 6px; border-radius: 10px; }
 .btn.addr-copy .micon{ font-size: 18px; }
-</style>
+
+/* 類型膠囊（表格用；JS 之後會加 class） */
+.pill{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; letter-spacing:.3px; }
+/* 膠囊：紅=支出、黃=收入 */
+.pill-expense{ color:#ff3b30; background: color-mix(in oklab, #ff3b30 14%, transparent); border:1px solid color-mix(in oklab, #ff3b30 34%, transparent); }
+.pill-income{ color:#9c7a00; background: color-mix(in oklab, #ffcc00 22%, transparent); border:1px solid color-mix(in oklab, #ffcc00 40%, transparent); }
+.pill-neutral{ color:#1e90ff; background: color-mix(in oklab, #1e90ff 12%, transparent); border:1px solid color-mix(in oklab, #1e90ff 30%, transparent); }
+html[data-theme="dark"] .pill-expense{ color:#ff8a80; }
+html[data-theme="dark"] .pill-income{ color:#ffd666; }
+html[data-theme="dark"] .pill-neutral{ color:#9dc7ff; }
+
+/* ===== 分析頁：兩欄網格（左：篩選｜右：圖表+合計+清單） ===== */
+    .data-grid{
+      display:grid;
+      grid-template-columns: 132px minmax(0, 1fr); /* 左欄對齊 flt-drawer 寬度 */
+      gap: 16px;
+      align-items: start;
+      max-width: 1280px; /* 桌面更寬 */
+      margin: 0 auto;
+      min-width:0;
+    }
+    @media (max-width: 960px){ .data-grid{ grid-template-columns: 1fr; } }
+    @media (max-width: 720px){
+      .data-right > .card,
+      .data-right > .sumbar{ max-width: 640px; margin-left:auto; margin-right:auto; }
+    }
+    /* 只要在左欄顯示，就強制以 sticky 呈現，避免覆蓋右側 */
+    .data-left .flt-drawer{
+      width: 100%; max-width: 132px;
+      position: sticky; top: 72px; left: auto; right: auto; bottom: auto;
+      transform: none; width: auto;
+      z-index: 1;
+    }
+    .data-right{ z-index: 0; }
+#sumTotal, #sumBalanceAll{
+  display:inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background:#fff;
+  color:#111;
+  border:1px solid var(--line);
+  font-weight: 800;
+}
+
+/* 右側撐滿且不重疊 */
+.data-right > .card,
+.data-right > .sumbar{ width: 100%; max-width: 100%; }
+.data-right{ min-width:0; }
+/* === 合計數字改白色膠囊；全域移除「|」分隔符 === */
+.sum-sep{ display:none; }
+
+
+/* ===== 地址區：雙欄卡片 ===== */
+ .addr-grid{
+    display:flex; flex-direction: column; gap:12px;
+    justify-content:center; align-items:stretch; margin-bottom:14px;
+    width:100%; max-width:100%;
+  }
+  .addr-box{
+  flex: 1 1 auto; width:100%; box-sizing:border-box; text-align:left;
+  border:1px solid var(--line); background: var(--tag-bg);
+  border-radius:14px; padding:10px 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.04);
+  overflow-wrap:anywhere; word-break:break-word;
+}
+/* 地址行：按鈕固定於右側，文字讓出空間 */
+.addr-box{ position: relative; padding-right: 44px; }
+.addr-box .addr-copy{ position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+.addr-box .addr-copy .micon{ font-size: 20px; }
+.addr-box > div{ overflow-wrap:anywhere; }
+
+/* ===== KPI 等高：卡片撐滿父層高度 ===== */
+  .row{ align-items: stretch; } /* 確保 flex 子項可拉齊 */
+  .card.kpi-eq{ display:flex; flex-direction:column; height:100%; min-width:0; }
+  .card.kpi-eq .subtitle{ margin-top:auto; }
+
+/* ===== 資訊頁：桌面版左右配置；手機直向堆疊 ===== */
+  /* Info: 本月重點（含 .kpi-eq）→ 兩欄大卡 */
+  #form_info .card .row:has(.kpi-eq){
+    display: grid;
+    grid-template-columns: repeat(2, minmax(340px, 1fr));
+    gap: 14px;
+  }
+  #form_info .card .row:has(.kpi-eq) .col{ width: auto; }
+  .card.kpi-eq{ min-height: 88px; }
+
+  @media (max-width: 800px){
+    #form_info .card .row:has(.kpi-eq){ grid-template-columns: 1fr; }
+  }
+  @media (min-width: 1025px){
+    /* 右側（含本月重點等卡）加寬為 1.5x */
+    #form_info{ grid-template-columns: 1fr 1.5fr; align-items:start; }
+    /* 桌面版 KPI 仍維持 2 欄寬大卡 */
+    #form_info .card .row:has(.kpi-eq){ grid-template-columns: repeat(2, minmax(340px, 1fr)); }
+    #form_info > .card:nth-of-type(1){ grid-column: 1; grid-row: 1 / span 3; }
+    #form_info > .card:nth-of-type(2),
+    #form_info > .card:nth-of-type(3),
+    #form_info > .card:nth-of-type(4){ grid-column: 2; }
+  }
+  
+  /* 保證底部 tabbar 的 icon 一定出現 */
+  .tabbar .tab-item .tab-ico{ display:block; font-size: 60px; line-height: 1; }
+
+/* 分析頁：手機版專屬排版 */
+@media (max-width: 1024px){
+  /* 篩選列滿寬置頂（原本在左欄） */
+  .data-grid{ grid-template-columns: 1fr; }
+  .data-left .flt-drawer{ position: static; max-width: none; width: 100%; }
+  /* 隱藏圖表、保留合計與清單 */
+  #chartsBox{ display: none !important; }
+  .data-right > .sumbar, .data-right > .card{ max-width: 100%; }
+  /* 放大整個分析頁（300%），包含篩選與合計列 */
+  #form_data{ font-size: 200%; }
+  #form_data .flt-drawer,
+  #form_data .sumbar{ font-size: inherit; }
+
+  /* 修正：這些原本寫死 px 的元素，改回跟隨父層字級 */
+  #form_data .flt-title,
+  #form_data .date-field,
+  #form_data .sum-right,
+
+  #form_data .meta-row{ font-size: 1em !important; }
+  #form_data .chips .chip,
+  #form_data .segmulti .segbtn, #fltFrom,
+  #form_data .sum-tag,
+  #form_data .date-display{ font-size: 0.6em !important; }
+  #form_data .flt-label{ font-size:0.3em !important; }
+
+  /* 表格字級跟隨父層 */
+  #form_data table{ font-size: inherit; }
+
+  /* 手機：篩選列在左、sumbar 在右；清單在下方橫跨兩欄 */
+  #form_data .data-grid{
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;          /* 兩者等高 */
+  column-gap: 14px;              /* 兩欄間距 */
+}
+  #form_data .data-left{ grid-column: 1; grid-row: 1; }
+  #form_data .data-left .flt-drawer{
+  max-width: 75%; margin: 14px auto; height: 90%;
+}
+  #form_data .data-right{ display: contents; } /* 讓內部項目能當 grid 直屬子層定位 */
+  #form_data .sumbar{ grid-column: 2; grid-row: 1; 
+  max-width: 85%; margin: 14px auto; height: 90%;
+}
+  /* 清單在下方，橫跨兩欄滿寬 */
+  #form_data .data-right .card{
+  grid-column: 1 / -1; grid-row: 2; margin: 14px auto;max-width: 95%; }
+
+  /* sumbar 內容改為縱向堆疊（上：chips；下：總額） */
+  /* sumbar：上 chips、下 totals；中間加分隔線；移除「|」 */
+  #form_data .sumbar{
+    flex-direction: column; align-items: stretch; gap: 8px;
+  }
+  #form_data .sum-left{ order: 1; justify-content:flex-start; }
+  #form_data .sum-right{
+    order: 2; align-self: stretch;
+    display:flex; flex-direction:column; gap:8px;
+    border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  #form_data .sum-sep{ display:none !important; } /* 移除 | */
+  </style>
