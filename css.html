@@ -614,7 +614,7 @@ html[data-theme="dark"] .pill-neutral{ color:#9dc7ff; }
     gap: 14px;
   }
   #form_info .card .row:has(.kpi-eq) .col{ width: auto; }
-  .card.kpi-eq{ min-height: 88px; }
+  .card.kpi-eq{ min-height: 70px; }
 
   @media (max-width: 800px){
     #form_info .card .row:has(.kpi-eq){ grid-template-columns: 1fr; }
@@ -650,13 +650,15 @@ html[data-theme="dark"] .pill-neutral{ color:#9dc7ff; }
   #form_data .flt-title,
   #form_data .date-field,
   #form_data .sum-right,
-
   #form_data .meta-row{ font-size: 1em !important; }
   #form_data .chips .chip,
   #form_data .segmulti .segbtn, #fltFrom,
   #form_data .sum-tag,
   #form_data .date-display{ font-size: 0.6em !important; }
   #form_data .flt-label{ font-size:0.3em !important; }
+
+  /*Info page */
+  #kpiThisMonth, #kpiMgmtPaid, #kpiUtilitiesSum, #kpiEquipment, #loanPaid, #loanTotal, #loanPct, #loanBalance, #catbar-total, #incbar-total{ font-size: 36px; font-weight:800 !important;line-height: 1.1;}
 
   /* 表格字級跟隨父層 */
   #form_data table{ font-size: inherit; }
