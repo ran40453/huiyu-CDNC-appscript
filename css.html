@@ -29,7 +29,7 @@
       --ico-bg: var(--field-bg);
       --ico-border: var(--field-border);
     }
-    @media (max-width: 900px){ :root{ --flt-w: 110px; } }
+    @media (max-width: 1024px){ :root{ --flt-w: 110px; } }
 
     /* ===== 暗色 ===== */
     html[data-theme="dark"]{
@@ -134,7 +134,7 @@
 
     .row { display:flex; gap: 12px; }
     .col { flex:1; min-width: 0; display: flex; flex-direction: column; }
-    @media (max-width: 740px){ .row { flex-direction: column; } }
+    @media (max-width: 1024px){ .row { flex-direction: column; } }
 
     label{ font-size: 13px; color: var(--muted); margin: 2px 2px 6px; font-weight: 600; }
     input[type="date"],
@@ -163,7 +163,7 @@
     .btn:disabled{ opacity: .6; cursor: not-allowed; }
     .actions{ display:flex; gap:10px; align-items:center; margin-top: 16px; }
     #msg{ flex:1; min-height: 46px; display:flex; align-items:center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--tag-bg); font-size: 14px; }
-    @media (max-width: 560px){ .actions{ flex-direction: column; align-items: stretch; } .btn{ width: 100%; } }
+    @media (max-width: 1024px){ .actions{ flex-direction: column; align-items: stretch; } .btn{ width: 100%; } }
 
     /* KPI */
     .ink{ display:grid; grid-template-columns: repeat(3, minmax(180px,1fr)); gap: 14px; margin: 6px 0 4px; }
@@ -183,7 +183,7 @@
 
     .grid-2-tight{ display:grid; grid-template-columns: 1fr 2fr; gap: 12px; }
     .grid-2-tight > *{ min-width:0; }
-    @media (max-width: 900px){ .grid-2-tight{ grid-template-columns: 1fr; } }
+    @media (max-width: 1024px){ .grid-2-tight{ grid-template-columns: 1fr; } }
     .charts-compact{ height: 25vh; min-height: 200px; }
     canvas{ width: 100%; height: 100%; }
 
@@ -551,8 +551,8 @@ html[data-theme="dark"] .pill-neutral{ color:#9dc7ff; }
       margin: 0 auto;
       min-width:0;
     }
-    @media (max-width: 960px){ .data-grid{ grid-template-columns: 1fr; } }
-    @media (max-width: 720px){
+    @media (max-width: 1024px){ .data-grid{ grid-template-columns: 1fr; } }
+    @media (max-width: 1024px){
       .data-right > .card,
       .data-right > .sumbar{ max-width: 640px; margin-left:auto; margin-right:auto; }
     }
@@ -616,7 +616,7 @@ html[data-theme="dark"] .pill-neutral{ color:#9dc7ff; }
   #form_info .card .row:has(.kpi-eq) .col{ width: auto; }
   .card.kpi-eq{ min-height: 70px; }
 
-  @media (max-width: 800px){
+  @media (max-width: 1024px){
     #form_info .card .row:has(.kpi-eq){ grid-template-columns: 1fr; }
   }
   @media (min-width: 1025px){
@@ -693,4 +693,5 @@ html[data-theme="dark"] .pill-neutral{ color:#9dc7ff; }
     border-top: 1px solid var(--line); padding-top: 8px;
   }
   #form_data .sum-sep{ display:none !important; } /* 移除 | */
+}
   </style>
